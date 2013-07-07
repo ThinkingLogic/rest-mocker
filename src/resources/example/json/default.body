@@ -1,0 +1,5 @@
+{
+ "file":"default.body",
+ "directory":"example/json",
+ "notes":"This is the default.body file in the example/json folder. You'll see this if we don't have a specific file for the request method"
+}

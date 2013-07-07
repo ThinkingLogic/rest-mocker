@@ -1,0 +1,18 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+	<title>REST Mocker</title>
+
+</head>
+
+<body>
+	<h1>Welcome to the REST Mocker!</h1>
+	<p>The <strong>REST Mocker</strong> provides canned responses to REST requests, and allows you to decide <em>which</em> canned response to return based on matching one or more of:</p>
+	<ul><li>Request Headers</li><li>Query Parameters</li><li>The request method (GET, POST, PUT or DELETE)</li><li>JSON Path expressions</li><li>XPath expressions</li></ul>
+	<p>The intended usage is to replace (mock) a REST service for development and testing purposes - it allows you to develop and test against a known set of responses</p>
+</body>
+</html>

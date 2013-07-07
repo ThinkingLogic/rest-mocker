@@ -1,0 +1,7 @@
+{
+ "file":"1.body",
+ "directory":"example/json/GET/a"
+ "letter":"a",
+ "number":"1",
+ "notes":"This is the 1.body file. It is returned for letter=a, number=1"
+}

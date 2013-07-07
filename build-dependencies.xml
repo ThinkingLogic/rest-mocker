@@ -1,0 +1,93 @@
+<?xml version="1.0"?>
+<!DOCTYPE project>
+<!--
+   to run successfully this script must have access to the internet.
+-->
+<project name="rest-mocker-dependencies" default="resolve-dependencies" xmlns:ivy="antlib:org.apache.ivy.ant" basedir=".">
+
+    <!-- =================================
+          Ivy targets/properties.
+          apache ivy is used to resolve dependencies so that no jar files need to be stored in svn.
+         ================================= -->
+
+	<!-- Build.properties contains locations of folders (and is used in common with cruisecontrol-build.xml -->
+	<!-- To override these values on the local machine only, specify the property in local.properties -->
+	<property file="local.properties"/>
+	<property file="build.properties"/>
+
+	<!-- ivy properties -->
+	<property name="ivy.install.version" value="2.3.0" />
+	<property name="ivy.jar.dir" value="${basedir}/ivy" />
+	<property name="ivy.jar.filename" value="ivy-${ivy.install.version}.jar" />
+	<property name="ivy.jar.file" value="${ivy.jar.dir}/${ivy.jar.filename}" />
+	<property name="ivy.uptodate.file" value=".ivyuptodate" />
+
+	<target name="check-ivy-uptodate">
+		<uptodate property="ivy.uptodate" srcfile="${basedir}/ivy.xml" targetfile="${ivy.uptodate.file}"/>
+	</target>
+
+	<!-- resolve ivy dependencies, download jars and copy them to lib folder. -->
+	<target name="resolve-dependencies" depends="init-ivy,check-ivy-uptodate" unless="ivy.uptodate">
+   		<ivy:retrieve pattern="${web.lib.dir}/[artifact].[ext]" sync="true" conf="web"/>
+   		<ivy:retrieve pattern="${build.lib.dir}/[artifact].[ext]" sync="true" conf="lib"/>
+		<touch file="${ivy.uptodate.file}"/>
+	</target>
+
+	<!-- create a path containing the ivy jar file, and define the ivy and ant-contrib tasks -->
+	<target name="init-ivy" depends="setup-proxy,download-ivy">
+		<!-- delete old versions (any jars other than current versions of ivy and ant-contrib) -->
+		<delete dir="${ivy.jar.dir}" includes="*.jar" failonerror="false">
+			<exclude name="${ivy.jar.filename}"/>
+			<exclude name="${ant-contrib.jar.filename}"/>
+		</delete>
+        <path id="ivy.lib.path">
+            <fileset dir="${ivy.jar.dir}">
+    			<include name="${ivy.jar.filename}"/>
+    			<include name="${ant-contrib.jar.filename}"/>
+            </fileset>
+        </path>
+        <taskdef resource="org/apache/ivy/ant/antlib.xml"
+                 uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/>
+    </target>
+
+	<!-- use a proxy if proxy properties are set -->
+	<target name="setup-proxy" if="proxy.host" depends="describe-proxy-properties">
+		<echo message="proxy.host=${proxy.host}"/>
+		<echo message="proxy.port=${proxy.port}"/>
+		<echo message="proxy.user=${proxy.user}"/>
+		<echo message="proxy.password=${proxy.password}"/>
+		<setproxy proxyhost="${proxy.host}" proxyport="${proxy.port}" proxyuser="${proxy.user}" proxypassword="${proxy.password}"/>
+	</target>
+	<target name="describe-proxy-properties" unless="proxy.host">
+		<echo level="info" message="To configure a proxy for web access, set the following properties in local.properties: proxy.host, proxy.port, proxy.user, proxy.password"/>
+	</target>
+
+	<!-- download Ivy from web site, unless the jar file is already present  -->
+    <target name="download-ivy" depends="check-ivy-present" unless="ivy.jar.present">
+    	<mkdir dir="${ivy.jar.dir}"/>
+		<echo message="installing ivy ${ivy.install.version} to ${ivy.jar.dir}..."/>
+    	<get src="http://repo1.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
+    		 dest="${ivy.jar.file}" usetimestamp="true"/>
+    </target>
+
+    <!-- Sets a property if the ivy jar is already present on the system -->
+	<target name="check-ivy-present">
+		<available file="${ivy.jar.file}" property="ivy.jar.present"/>
+		<available file="${ant-contrib.jar.file}" property="ant-contrib.jar.present"/>
+    </target>
+
+	<!-- clean (delete jars from) the ivy cache, and delete the jars from lib -->
+	<target name="clean-ivy" depends="init-ivy"
+			description="--> clean the ivy cache and deletes lib folders ">
+		<ivy:cleancache />
+        <delete includeemptydirs="true" quiet="true">
+            <fileset dir="${lib.parent.dir}" />
+        	<fileset dir="${basedir}" includes="${ivy.uptodate.file}"/>
+    	</delete>
+	</target>
+
+	<target name="ivy-report" description="--> generates a report of dependencies in the project to ${ivy.reports.dir}">
+		<ivy:report conf="web" todir="${ivy.reports.dir}" />
+		<ivy:report conf="lib" todir="${ivy.reports.dir}" />
+	</target>
+</project>

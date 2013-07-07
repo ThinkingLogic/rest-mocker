@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:noNamespaceSchemaLocation="http://ant.apache.org/ivy/schemas/ivy.xsd">
+
+  <info organisation="thinkinglogic" module="rest-mocker" />
+
+  <!-- by default ivy uses the maven repository to find dependencies.
+  Use http://mvnrepository.com/ to find modules, convert the settings from the maven format:
+	  <dependency>
+	    <groupId>commons-lang</groupId>
+	    <artifactId>commons-lang</artifactId>
+	    <version>2.0</version>
+	  </dependency>
+  To convert this into an Ivy dependency declaration, all you have to do is use the groupId as organization,
+  the artifactId as module name, and the version as revision. That is commons-lang and commons-cli.
+  Note that having commons-lang and commons-cli as organization is not the best example of what the organization should be.
+  It would be better to use org.apache, org.apache.commons or org.apache.commons.lang. However,
+  this is how these modules are identified in the maven 2 repository, so the simplest way to get them is to use the details as is.
+    -->
+
+    <configurations>
+    	<conf name="web" description="/WebContent/WEB-INF/lib - deployed as part of the war"/>
+    	<conf name="lib" description="/lib - not deployed, just used at build time"/>
+    </configurations>
+
+    <dependencies defaultconfmapping="*->default">
+        <dependency org="com.jayway.jsonpath" name="json-path" rev="0.8.1" conf="web"/>
+		<dependency org="commons-io" name="commons-io" rev="2.4" conf="web"/>
+		<dependency org="log4j" name="log4j" rev="1.2.16" conf="web"/>
+		<dependency org="org.apache.velocity" name="velocity" rev="1.7" conf="web"/>
+
+		<dependency org="org.mortbay.jetty" name="servlet-api-2.5" rev="6.1.14" conf="lib"/>
+    </dependencies>
+
+</ivy-module>

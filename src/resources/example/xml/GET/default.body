@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+ <file>default.body</file>
+ <directory>example/xml/GET</directory>
+ <letter></letter>
+ <number></number>
+ <notes>This is the default.body file in the example/xml/GET folder. To retrieve a different file, specify a query param of letter=a and/or number=1.</notes>
+</root>

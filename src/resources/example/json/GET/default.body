@@ -1,0 +1,7 @@
+{
+ "file":"default.body",
+ "directory":"example/json/GET",
+ "letter":"",
+ "number":"",
+ "notes":"This is the default.body file in the example/json/GET folder. To retrieve a different file, specify a query param of letter=a and/or number=1"
+}
