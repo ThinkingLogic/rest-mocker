@@ -5,3 +5,5 @@
 /WebContent/WEB-INF/lib/*.jar
 /WebContent/WEB-INF/lib/*.jar
 /WebContent/WEB-INF/lib/*.jar
+/ivy/*.jar
+/lib/*.jar

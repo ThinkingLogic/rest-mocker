@@ -29,6 +29,7 @@
 		<dependency org="commons-io" name="commons-io" rev="2.4" conf="web"/>
 		<dependency org="log4j" name="log4j" rev="1.2.16" conf="web"/>
 		<dependency org="org.apache.velocity" name="velocity" rev="1.7" conf="web"/>
+		<dependency org="org.apache.velocity" name="velocity-tools" rev="2.0" conf="web"/>
 
 		<dependency org="org.mortbay.jetty" name="servlet-api-2.5" rev="6.1.14" conf="lib"/>
     </dependencies>

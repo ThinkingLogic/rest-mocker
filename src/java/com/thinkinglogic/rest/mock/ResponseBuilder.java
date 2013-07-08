@@ -2,6 +2,7 @@ package com.thinkinglogic.rest.mock;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringWriter;
 import java.net.URL;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -16,10 +17,14 @@ import javax.xml.xpath.XPathFactory;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
+import org.apache.velocity.VelocityContext;
+import org.apache.velocity.app.VelocityEngine;
+import org.apache.velocity.tools.generic.XmlTool;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.spi.JsonProviderFactory;
 
 /**
  * Given details of an HttpServletRequest, this class examines the classpath for details of the appropriate response.
@@ -43,8 +48,17 @@ public final class ResponseBuilder {
 
 	protected static final String DEFAULT_FILE_NAME = "default";
 
+	/**
+	 * The name of the properties file (without the extension) that specifies the directory/filename of the content to
+	 * return.
+	 */
+	public static final String PATH_PROPERTIES_NAME = "path";
+
+	/** The extension of the properties file that specifies the directory/filename of the content to return. */
+	public static final String PATH_PROPERTIES_EXT = "properties";
+
 	/** The name of the properties file that specifies the directory/filename of the content to return. */
-	public static final String PATH_PROPERTIES_FILE = "path.properties";
+	public static final String PATH_PROPERTIES_FILE = PATH_PROPERTIES_NAME + "." + PATH_PROPERTIES_EXT;
 
 	/** The name of the path property that identifies a directory by the request method (get, put etc) - true or false. */
 	public static final String DIR_METHOD = "dir.method";
@@ -74,6 +88,11 @@ public final class ResponseBuilder {
 	/** The name of the path property that identifies a file by evaluating an XPath expression against the request body. */
 	public static final String FILE_XPATH = "file.xpath";
 
+	/** The name of the path property that specifies whether to parse the response as a velocity template (true/false). */
+	public static final String VELOCITY = "velocity";
+
+	private static final VelocityEngine VELOCITY_ENGINE = initialiseVelocity();
+
 	private final Map<String, String> queryParams;
 	private final Map<String, String> requestHeaders;
 	private final String requestBody;
@@ -83,7 +102,7 @@ public final class ResponseBuilder {
 
 	private String derivedPath;
 	private String derivedName = DEFAULT_FILE_NAME;
-	private Properties pathProperties = new Properties();
+	private Properties pathProperties = null;
 
 	private Document xmlDocument;
 	private XPathFactory xPathFactory;
@@ -150,6 +169,10 @@ public final class ResponseBuilder {
 		response.setStatus(status);
 		String body = getResponseBody();
 
+		if (Boolean.parseBoolean(pathProperties.getProperty(VELOCITY, "false"))) {
+			logger.info("Parsing response as a Velocity template");
+			body = parseResponse(body);
+		}
 		logger.info("Sending " + status + " response: headers=" + responseHeaders + ", body=\n" + body);
 
 		response.setContentLength(body.length());
@@ -247,6 +270,10 @@ public final class ResponseBuilder {
 		try (InputStream stream = this.getClass().getResourceAsStream(derivedPath + PATH_PROPERTIES_FILE);) {
 			if (stream == null) {
 				logger.debug("No path.properties at " + derivedPath);
+				if (pathProperties == null) { // walk back up the path looking for path.properties
+					pathProperties = loadPropertiesFromStream(this.loadFile(derivedPath, PATH_PROPERTIES_NAME,
+							PATH_PROPERTIES_EXT));
+				}
 			} else {
 				logger.debug("Found path.properties at " + derivedPath);
 				pathProperties = new Properties();
@@ -501,4 +528,45 @@ public final class ResponseBuilder {
 		return string.toString();
 	}
 
+	/**
+	 * Parses the specified string as a velocity template.
+	 * 
+	 * @param body the string to parse.
+	 * @return the string, parsed as a velocity template.
+	 */
+	protected String parseResponse(final String body) {
+		VelocityContext context = new VelocityContext();
+		context.put("queryParams", this.queryParams);
+		context.put("requestHeaders", this.requestHeaders);
+		context.put("requestMethod", this.requestMethod);
+		context.put("pathInfo", this.requestPath);
+		context.put("request", requestBody);
+		try {
+			if (ProbableContentType.XML.equals(this.probableContentType)) {
+				context.put("request", new XmlTool().parse(requestBody));
+			} else if (ProbableContentType.JSON.equals(this.probableContentType)) {
+				context.put("request", JsonProviderFactory.createProvider().parse(requestBody));
+			}
+		} catch (RuntimeException e) {
+			logger.error("Unable to parse requestBody as " + this.probableContentType, e);
+		}
+		final StringWriter stringWriter = new StringWriter();
+		VELOCITY_ENGINE.evaluate(context, stringWriter, "Velocity", body);
+		return stringWriter.toString();
+	}
+
+	/**
+	 * Creates and initialises a new VelocityEngine.
+	 * 
+	 * @return a new VelocityEngine.
+	 */
+	protected static VelocityEngine initialiseVelocity() {
+		VelocityEngine ve = new VelocityEngine();
+		ve.setProperty("runtime.log.logsystem.class", "org.apache.velocity.runtime.log.Log4JLogChute");
+		ve.setProperty("runtime.log.logsystem.log4j.logger", "root");
+		ve.setProperty(VelocityEngine.INPUT_ENCODING, UTF8);
+		ve.setProperty(VelocityEngine.OUTPUT_ENCODING, UTF8);
+		ve.init();
+		return ve;
+	}
 }
