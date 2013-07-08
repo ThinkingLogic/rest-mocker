@@ -7,3 +7,5 @@
 /WebContent/WEB-INF/lib/*.jar
 /ivy/*.jar
 /lib/*.jar
+/.ivyuptodate
+/local.properties
