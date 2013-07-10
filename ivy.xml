@@ -22,6 +22,7 @@
     <configurations>
     	<conf name="web" description="/WebContent/WEB-INF/lib - deployed as part of the war"/>
     	<conf name="lib" description="/lib - not deployed, just used at build time"/>
+    	<conf name="jetty" description="/tools/jetty - not part of the project, but used to run the application"/>
     </configurations>
 
     <dependencies defaultconfmapping="*->default">
@@ -32,6 +33,12 @@
 		<dependency org="org.apache.velocity" name="velocity-tools" rev="2.0" conf="web"/>
 
 		<dependency org="org.mortbay.jetty" name="servlet-api-2.5" rev="6.1.14" conf="lib"/>
+
+        <!-- jetty configuration: -->
+        <dependency org="jetty-distribution-zip-only" name="jetty" rev="stable-9" conf="jetty">
+        	<artifact name="${jetty.version}" type="zip" url="http://download.eclipse.org/jetty/${jetty.version}/dist/jetty-distribution-${jetty.version}.zip"/>
+        </dependency>
+
     </dependencies>
 
 </ivy-module>

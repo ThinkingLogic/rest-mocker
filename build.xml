@@ -3,7 +3,7 @@
 <!--
    to run successfully this script must have access to the internet.
 -->
-<project name="rest-mocker-dependencies" default="resolve-dependencies" xmlns:ivy="antlib:org.apache.ivy.ant" basedir=".">
+<project name="rest-mocker" default="build" xmlns:ivy="antlib:org.apache.ivy.ant" basedir=".">
 
     <!-- =================================
           Ivy targets/properties.
@@ -22,6 +22,12 @@
 	<property name="ivy.jar.file" value="${ivy.jar.dir}/${ivy.jar.filename}" />
 	<property name="ivy.uptodate.file" value=".ivyuptodate" />
 
+	<path id="build.class.path">
+		<fileset dir="${web.lib.dir}">
+		    <include name="**/*.jar"/>
+		</fileset>
+	</path>
+
 	<target name="check-ivy-uptodate">
 		<uptodate property="ivy.uptodate" srcfile="${basedir}/ivy.xml" targetfile="${ivy.uptodate.file}"/>
 	</target>
@@ -30,6 +36,12 @@
 	<target name="resolve-dependencies" depends="init-ivy,check-ivy-uptodate" unless="ivy.uptodate">
    		<ivy:retrieve pattern="${web.lib.dir}/[artifact].[ext]" sync="true" conf="web"/>
    		<ivy:retrieve pattern="${build.lib.dir}/[artifact].[ext]" sync="true" conf="lib"/>
+   		<ivy:retrieve pattern="${jetty.download.dir}/[artifact].[ext]" sync="true" conf="jetty"/>
+		<unzip src="${jetty.zip}" dest="${tools.dir}"/>
+		<move todir="${jetty.dir}/"><fileset dir="${tools.dir}/${jetty.filename}"/></move>
+		<echo file="${jetty.dir}/run.bat">java -jar start.jar jetty.port=8080</echo>
+		<echo file="${jetty.dir}/run.sh">java -jar start.jar jetty.port=8080</echo>
+		<delete dir="${jetty.dir}/webapps.demo" />
 		<touch file="${ivy.uptodate.file}"/>
 	</target>
 
@@ -84,6 +96,39 @@
             <fileset dir="${lib.parent.dir}" />
         	<fileset dir="${basedir}" includes="${ivy.uptodate.file}"/>
     	</delete>
+	</target>
+
+	<target name="build" description="Builds the application" depends="resolve-dependencies">
+		<!-- compile -->
+		<delete dir="${build.classes.dir}" failonerror="false" />
+		<mkdir dir="${build.classes.dir}" />
+		<javac srcdir="${java.src.dir}" destdir="${build.classes.dir}" includeantruntime="false"
+			debug="on" debuglevel="vars,lines,source" deprecation="on" classpathref="build.class.path"
+        />
+		<!-- Copy sources to classes -->
+		<copy todir="${build.classes.dir}">
+			<fileset dir="${java.src.dir}" includes="**/*.*" />
+		</copy>
+		<!-- jar classes and copy to web lib -->
+		<jar destfile="${rest-mocker.jar.dest}" basedir="${build.classes.dir}" />
+		<!-- build the war file -->
+		<war destfile="${war.file}" webxml="${war.content.dir}/WEB-INF/web.xml">
+			<classes dir="${resources.src.dir}"/>
+			<fileset dir="${war.content.dir}">
+				<!-- exclude web.xml as that is explicitly included above -->
+				<exclude name="${war.content.dir}/WEB-INF/web.xml" />
+			</fileset>
+			<lib dir="${web.lib.dir}"/>
+			<manifest>
+				<attribute name="Implementation-Vendor" value="Thinking Logic Ltd."/>
+			</manifest>
+		</war>
+		<!-- explode the war file into jetty/webapps -->
+		<unzip src="${war.file}" dest="${jetty.dir}/webapps/root" overwrite="true"/>
+		<!-- delete the rest-mocker jar file -->
+		<delete file="${rest-mocker.jar.dest}"/>
+		<echo>Build complete! Everything you need is in the ${jetty.dir} folder - invoke ${jetty.dir}/run.bat on Windows or ${jetty.dir}/run.sh on linux.</echo>
+		<echo>Then point your browser/REST client at: http://localhost:8080/ for further instructions on how to use it.</echo>
 	</target>
 
 	<target name="ivy-report" description="--> generates a report of dependencies in the project to ${ivy.reports.dir}">

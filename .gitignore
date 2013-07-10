@@ -1,11 +1,10 @@
 /WebContent/WEB-INF/lib/*.jar
-/WebContent/WEB-INF/lib/*.jar
-/WebContent/WEB-INF/lib/*.jar
-/WebContent/WEB-INF/lib/*.jar
-/WebContent/WEB-INF/lib/*.jar
-/WebContent/WEB-INF/lib/*.jar
-/WebContent/WEB-INF/lib/*.jar
-/ivy/*.jar
 /lib/*.jar
 /.ivyuptodate
 /local.properties
+/tools/download
+/tools/jetty
+/tools/*
+/build/*
+/build/*.war
+/ivy/*.jar
