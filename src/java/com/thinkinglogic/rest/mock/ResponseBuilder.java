@@ -103,6 +103,9 @@ public final class ResponseBuilder {
 	/** The name of the path property that specifies the maximum random delay before responding (milliseconds). */
 	public static final String RANDOM_DELAY = "random.delay";
 
+	/** The name of the path property that should be used instead of empty (null or empty string) request properties. */
+	public static final String EMPTY_VALUE_REPLACEMENT = "empty.value.replacement";
+
 	private static final VelocityEngine VELOCITY_ENGINE = initialiseVelocity();
 	private static final Properties GLOBAL_DEFAULTS = getGlobalDefaults();
 	private static final String CLASSPATH_LOCATION = getClassesLocation();
@@ -118,6 +121,7 @@ public final class ResponseBuilder {
 	private String derivedPath;
 	private String derivedName = DEFAULT_FILE_NAME;
 	private Properties pathProperties = null;
+	private String emptyValueReplacement;
 
 	private Document xmlDocument;
 	private XPathFactory xPathFactory;
@@ -323,11 +327,13 @@ public final class ResponseBuilder {
 					pathProperties = new Properties(GLOBAL_DEFAULTS);
 					pathProperties.putAll(loadPropertiesFromStream(this.loadFile(derivedPath, PATH_PROPERTIES_NAME,
 							PATH_PROPERTIES_EXT)));
+					this.emptyValueReplacement = pathProperties.getProperty(EMPTY_VALUE_REPLACEMENT, "");
 				}
 			} else {
 				logger.debug("Found path.properties at " + derivedPath);
 				pathProperties = new Properties(GLOBAL_DEFAULTS);
 				pathProperties.load(stream);
+				this.emptyValueReplacement = pathProperties.getProperty(EMPTY_VALUE_REPLACEMENT, "");
 				String key = "";
 				String property = "";
 
@@ -349,7 +355,7 @@ public final class ResponseBuilder {
 				}
 
 				key = pathProperties.getProperty(DIR_QUERYPARAM, "");
-				property = notNullString(queryParams.get(key));
+				property = getProperty(queryParams, key);
 				if (property.length() > 0) {
 					logger.debug("Matched " + DIR_QUERYPARAM + ": " + key + "=" + property);
 					setDerivedPath(derivedPath + property);
@@ -378,6 +384,20 @@ public final class ResponseBuilder {
 		} catch (IOException e) {
 			logger.error(e);
 		}
+	}
+
+	/**
+	 * Returns the requested value, or emptyValueReplacement if the key is not empty but there is no value in the map.
+	 * 
+	 * @param map the map to get a property from.
+	 * @param key the key of the property to get.
+	 * @return the value stored against the key in the map, or emptyValueReplacement if the key is not empty.
+	 */
+	protected String getProperty(final Map<String, String> map, final String key) {
+		if (notNullString(key).length() > 0) {
+			return replaceEmptyValue(map.get(key));
+		}
+		return "";
 	}
 
 	/**
@@ -410,7 +430,7 @@ public final class ResponseBuilder {
 				}
 			}
 		} else {
-			return notNullString(requestHeaders.get(headerName));
+			return getProperty(requestHeaders, headerName);
 		}
 		return "";
 	}
@@ -425,9 +445,10 @@ public final class ResponseBuilder {
 	protected String matchJsonPath(final String path) {
 		if (path.length() > 0 & probableContentType == ProbableContentType.JSON) {
 			try {
-				return notNullString(JsonPath.read(requestBody, path));
+				return replaceEmptyValue(JsonPath.read(requestBody, path));
 			} catch (Exception e) {
 				logger.error("Unable to evaluate JSONPATH: " + path, e);
+				return emptyValueReplacement;
 			}
 		}
 		return "";
@@ -444,9 +465,10 @@ public final class ResponseBuilder {
 	protected String matchXPath(final String path) {
 		if (path.length() > 0 & probableContentType == ProbableContentType.XML) {
 			try {
-				return notNullString(xPathFactory.newXPath().evaluate(path, this.xmlDocument));
+				return replaceEmptyValue(xPathFactory.newXPath().evaluate(path, this.xmlDocument));
 			} catch (Exception e) {
 				logger.error("Unable to evaluate XPATH: " + path, e);
+				return emptyValueReplacement;
 			}
 		}
 		return "";
@@ -475,7 +497,7 @@ public final class ResponseBuilder {
 		}
 
 		key = pathProperties.getProperty(FILE_QUERYPARAM, "");
-		property = notNullString(queryParams.get(key));
+		property = getProperty(queryParams, key);
 		if (property.length() > 0) {
 			logger.debug("Matched " + FILE_QUERYPARAM + ": " + key + "=" + property);
 			this.derivedName = property;
@@ -523,7 +545,7 @@ public final class ResponseBuilder {
 				}
 			}
 		} else {
-			return notNullString(requestHeaders.get(headerName));
+			return getProperty(requestHeaders, headerName);
 		}
 		return "";
 	}
@@ -568,10 +590,22 @@ public final class ResponseBuilder {
 	}
 
 	/**
+	 * @param string the string to replace with emptyValueReplacement if it is empty (null or empty string)
+	 * @return the string, or emptyValueReplacement if the string is empty.
+	 */
+	protected String replaceEmptyValue(final Object string) {
+		String value = notNullString(string);
+		if (value.length() == 0) {
+			value = emptyValueReplacement;
+		}
+		return value;
+	}
+
+	/**
 	 * @param string the string to ensure is not null.
 	 * @return returns the string, or empty string if null.
 	 */
-	private String notNullString(final Object string) {
+	protected String notNullString(final Object string) {
 		if (string == null) {
 			return "";
 		}

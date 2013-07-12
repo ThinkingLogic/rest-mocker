@@ -4,5 +4,5 @@
  <directory>example/xml/GET/a</directory>
  <letter>a</letter>
  <number></number>
- <notes>This is the file returned when letter=a and number is specified, but is not 1.</notes>
+ <notes>This is the file returned when letter=a and number has not been specified.</notes>
 </root>

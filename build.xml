@@ -124,11 +124,12 @@
 			</manifest>
 		</war>
 		<!-- explode the war file into jetty/webapps -->
-		<unzip src="${war.file}" dest="${jetty.dir}/webapps/root" overwrite="true"/>
+		<unzip src="${war.file}" dest="${jetty.dir}/webapps/rest-mocker" overwrite="true"/>
 		<!-- delete the rest-mocker jar file -->
 		<delete file="${rest-mocker.jar.dest}"/>
 		<echo>Build complete! Everything you need is in the ${jetty.dir} folder - invoke ${jetty.dir}/run.bat on Windows or ${jetty.dir}/run.sh on linux.</echo>
-		<echo>Then point your browser/REST client at: http://localhost:8080/ for further instructions on how to use it.</echo>
+		<echo>Then point your browser/REST client at: http://localhost:8080/rest-mocker for further instructions on how to use it.</echo>
+		<echo>(if port 8080 is already in use then you can edit run.bat/run.sh to change the port number)</echo>
 	</target>
 
 	<target name="ivy-report" description="--> generates a report of dependencies in the project to ${ivy.reports.dir}">

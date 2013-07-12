@@ -4,5 +4,13 @@
  <directory>example/xml/GET</directory>
  <letter></letter>
  <number></number>
- <notes>This is the default.body file in the example/xml/GET folder. To retrieve a different file, specify a query param of letter=a and/or number=1.</notes>
+ <notes>
+  <note>This is the default.body file in the example/xml/GET folder.</note>
+  <note>To retrieve a different file, specify a query param of letter=a and/or number=1.</note>
+  <note>/example/path.properties specified 'dir.header=Accept', which matched a mime type of application/xml.</note>
+  <note>/example/xml/path.properties specified 'dir.method=true', which matched the GET request method.</note>
+  <note>/example/xml/GET/path.properties exists, but did not match any of the properties in the request, so example/xml/GET/default.body was returned.</note>
+  <note>/default.status specified a status code of 200</note>
+  <note>/example/xml/default.headers specified a header of 'Content-Type=application/xml'</note>
+ </notes>
 </root>

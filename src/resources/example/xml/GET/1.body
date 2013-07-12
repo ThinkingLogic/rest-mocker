@@ -4,5 +4,5 @@
  <directory>example/xml/GET</directory>
  <letter></letter>
  <number></number>
- <notes>This is the file returned for an unrecognised letter, where number=1.</notes>
+ <notes>This is the file returned for an unrecognised (or not specified) letter, where number=1.</notes>
 </root>
