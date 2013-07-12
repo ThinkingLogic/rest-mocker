@@ -102,7 +102,8 @@ public class RestServlet extends HttpServlet {
 		logger.info("headers: " + headers);
 		logger.info("body: " + body);
 
-		ResponseBuilder builder = new ResponseBuilder(queryParams, headers, body, path, requestMethod);
+		ResponseBuilder builder = new ResponseBuilder(queryParams, headers, body, path, requestMethod,
+				request.getContextPath());
 		builder.handleResponse(response);
 	}
 

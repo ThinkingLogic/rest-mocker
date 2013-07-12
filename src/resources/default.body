@@ -12,7 +12,63 @@
 <body>
 	<h1>Welcome to the REST Mocker!</h1>
 	<p>The <strong>REST Mocker</strong> provides canned responses to REST requests, and allows you to decide <em>which</em> canned response to return based on matching one or more of:</p>
-	<ul><li>Request Headers</li><li>Query Parameters</li><li>The request method (GET, POST, PUT or DELETE)</li><li>JSON Path expressions</li><li>XPath expressions</li></ul>
+	<ul>
+		<li>The request method (GET, POST, PUT or DELETE)</li>
+		<li>Request Headers</li>
+		<li>Query Parameters</li>
+		<li>JSON Path expressions</li>
+		<li>XPath expressions</li>
+	</ul>
 	<p>The intended usage is to replace (mock) a REST service for development and testing purposes - it allows you to develop and test against a known set of responses</p>
+	<p>On receiving an http request, the REST mocker will attempt to match the request path to a set of resources on the classpath, looking for a 'path.properties' file in a directory matching the request path. If one is found, then mocker will attempt to find a sub-directory matching the properties of the request: the path.properties file will be examined for any of the following properties, in order: (if a property is specified, and matches a value in the request then no other properties will be considered, even if there is no matching subdirectory)</p>
+	<ol>
+		<li>dir.method - If found then mocker will look in a subdirectory matching the request (GET, POST, PUT, DELETE)</li>
+		<li>dir.header - If found then mocker will look in a subdirectory matching the specified request header. Note that there is special handling for the 'Accept' header, such that mocker will look for a subdirectory that matches any of the mime types in the Accept header, matching only the part after '/' (so a subdirectory of 'html' for an Accept header of 'text/html', etc).</li>
+		<li>dir.queryParam - If found then mocker will look in a subdirectory matching the specified query parameter.</li>
+		<li>dir.jsonPath - If found (and the request has a json-formatted body) then the json path expression will be evaluated, and mocker will look for a matching subdirectory</li>
+		<li>dir.xPath - If found (and the request has an xml-formatted body) then the xpath expression will be evaluated, and mocker will look for a matching subdirectory</li>
+	</ol>
+	<p>This process is repeated until no further subdirectories can be found (or until the first subdirectory without a path.properties is reached). If no path.properties file can be found matching the full request path, then mocker will walk back up the directory structure looking in each parent folder until it finds a path.properties file.</p>
+	<p>At this point, path.properties file will be examined for instructions to match a particular file, checking each of the following (in order) until a match is found: (if a property is specified, and matches a value in the request then no other properties will be considered, even if there is no matching file)</p>
+	<ol>
+		<li>file.method - If found then mocker will look for a file matching the request (GET, POST, PUT, DELETE)</li>
+		<li>file.header - If found then mocker will look for a file matching the specified request header. Note that there is special handling for the 'Accept' header, such that mocker will look for a subdirectory that matches any of the mime types in the Accept header, matching only the part after '/' (so a subdirectory of 'html' for an Accept header of 'text/html', etc).</li>
+		<li>file.queryParam - If found then mocker will look for a file matching the specified query parameter.</li>
+		<li>file.jsonPath - If found (and the request has a json-formatted body) then the json path expression will be evaluated, and mocker will look for a matching file</li>
+		<li>file.xPath - If found (and the request has an xml-formatted body) then the xpath expression will be evaluated, and mocker will look for a matching file</li>
+	</ol>
+	<p>The filename will be used to look for 3 different files: {filename}.body - the response body; {filename}.status - the http response code; {filename}.headers - the response headers. For any of the 3 types of file, if no file can be found with the matching name, then a default file from the current directory will be used instead. If there is no default, then the parent directory will be examined for a matching filename, or default file, and so on.</p>
+	<p>There are a few other properties you can specify in path.properties (and you can specify default values for these in default.path.properties):</p>
+	<ul>
+	    <li>velocity - if true ('velocity=true'), then the response body is parsed as a velocity template before being returned</li>
+	    <li>fixed.delay - the number of milliseconds to sleep before sending the response</li>
+	    <li>random.delay - the maximum number of milliseconds to sleep before sending the response - the actual delay will be a random number between 0 and this number. Note that this is in addition to any fixed delay</li>
+	</ul>
+	<p>This is easier to understand by <a href="./example">example</a> - click the link to to try it out. You can find the matching files (path.properties etc) in ${classpathLocation}example.</p>
+
+	<h3>Information about the request, made available in the velocity context:</h3>
+	<h4>Request Method: ${esc.dollar}requestMethod: $requestMethod</h4>
+	<h4>Path info: ${esc.dollar}pathInfo: $pathInfo</h4>
+	#if($pathInfo.split("/").size() > 1)
+	<p>The first element of the path is: $pathInfo.split("/")[1]</p>
+	#end
+	<h4>Query Parameters: ${esc.dollar}queryParams </h4>
+	<ul>
+	#foreach($param in $queryParams.entrySet())
+		<li>$param.key = $param.value</li>
+	#end
+	</ul>
+	<h4>Request Headers: ${esc.dollar}requestHeaders</h4>
+	<ul>
+	#foreach($param in $requestHeaders.entrySet())
+		<li>$param.key = $param.value</li>
+	#end
+	</ul>
+	<h4>Request Body: ${esc.dollar}request</h4>
+	<div>
+	$request
+	</div>
+	<p>If the request body is JSON, you can refer to specific properties as $request.propertyName. If the request is XML, you can refer to specific elements as ${esc.dollar}request.propertyName.text</p>
+
 </body>
 </html>

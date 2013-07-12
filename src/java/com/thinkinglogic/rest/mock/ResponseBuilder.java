@@ -7,6 +7,7 @@ import java.net.URL;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Random;
 import java.util.TreeMap;
 
 import javax.servlet.http.HttpServletResponse;
@@ -19,6 +20,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
+import org.apache.velocity.tools.generic.EscapeTool;
 import org.apache.velocity.tools.generic.XmlTool;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
@@ -34,6 +36,7 @@ public final class ResponseBuilder {
 	private static final Logger logger = Logger.getLogger(ResponseBuilder.class);
 
 	private static final String UTF8 = "UTF-8";
+	private static final Random RANDOM = new Random();
 
 	/** Enumeration of the different types of request content we can recognise. */
 	protected static enum ProbableContentType {
@@ -60,7 +63,10 @@ public final class ResponseBuilder {
 	/** The name of the properties file that specifies the directory/filename of the content to return. */
 	public static final String PATH_PROPERTIES_FILE = PATH_PROPERTIES_NAME + "." + PATH_PROPERTIES_EXT;
 
-	/** The name of the path property that identifies a directory by the request method (get, put etc) - true or false. */
+	/** The name of the properties file that specifies global defaults. */
+	public static final String DEFAULT_PATH_PROPERTIES_FILE = "default." + PATH_PROPERTIES_FILE;
+
+	/** The name of the path property that identifies a directory by the request method (GET, PUT etc) - true or false. */
 	public static final String DIR_METHOD = "dir.method";
 	/** The name of the path property that identifies a directory by a query string parameter. */
 	public static final String DIR_QUERYPARAM = "dir.queryParam";
@@ -91,13 +97,22 @@ public final class ResponseBuilder {
 	/** The name of the path property that specifies whether to parse the response as a velocity template (true/false). */
 	public static final String VELOCITY = "velocity";
 
+	/** The name of the path property that specifies a fixed delay before responding (milliseconds). */
+	public static final String FIXED_DELAY = "fixed.delay";
+
+	/** The name of the path property that specifies the maximum random delay before responding (milliseconds). */
+	public static final String RANDOM_DELAY = "random.delay";
+
 	private static final VelocityEngine VELOCITY_ENGINE = initialiseVelocity();
+	private static final Properties GLOBAL_DEFAULTS = getGlobalDefaults();
+	private static final String CLASSPATH_LOCATION = getClassesLocation();
 
 	private final Map<String, String> queryParams;
 	private final Map<String, String> requestHeaders;
 	private final String requestBody;
 	private final String requestPath;
 	private final String requestMethod;
+	private final String servletContext;
 	private ProbableContentType probableContentType;
 
 	private String derivedPath;
@@ -113,17 +128,18 @@ public final class ResponseBuilder {
 	 * @param queryParams query parameters.
 	 * @param headers request headers.
 	 * @param body body of the request (or an empty string).
-	 * @param servletPath the path of the request (request.getPathInfo()).
+	 * @param pathInfo the path of the request (request.getPathInfo()).
 	 * @param requestMethod GET/POST/PUT/DELETE.
 	 */
-	public ResponseBuilder(Map<String, String> queryParams, Map<String, String> headers, String body,
-			String servletPath, String requestMethod) {
+	public ResponseBuilder(Map<String, String> queryParams, Map<String, String> headers, String body, String pathInfo,
+			String requestMethod, String servletContext) {
 		super();
 		this.requestMethod = requestMethod;
 		this.queryParams = queryParams;
 		this.requestHeaders = headers;
 		this.requestBody = notNullString(body).trim();
-		this.requestPath = servletPath.startsWith("/") ? servletPath : "/" + servletPath;
+		this.requestPath = pathInfo.startsWith("/") ? pathInfo : "/" + pathInfo;
+		this.servletContext = servletContext;
 		this.setDerivedPath(requestPath);
 		determineContentType();
 		this.determinePath();
@@ -161,6 +177,7 @@ public final class ResponseBuilder {
 	 * @param response the response to modify.
 	 */
 	public void handleResponse(final HttpServletResponse response) {
+		handleDelay();
 		Map<String, String> responseHeaders = getResponseHeaders();
 		for (Entry<String, String> entry : responseHeaders.entrySet()) {
 			response.addHeader(entry.getKey(), entry.getValue());
@@ -173,16 +190,48 @@ public final class ResponseBuilder {
 			logger.info("Parsing response as a Velocity template");
 			body = parseResponse(body);
 		}
-		logger.info("Sending " + status + " response: headers=" + responseHeaders + ", body=\n" + body);
 
+		logger.info("Sending " + status + " response: headers=" + responseHeaders + ", body=\n" + body);
 		response.setContentLength(body.length());
 		try {
 			response.getWriter().write(body);
 			response.getWriter().flush();
 			response.getWriter().close();
 		} catch (IOException e) {
-			logger.error(e);
+			logger.error("Unable to write to, flush or close the response writer", e);
 		}
+	}
+
+	/**
+	 * Sleeps if path.properties indicates that we should do so.
+	 */
+	protected void handleDelay() {
+		try {
+			int fixedDelay = Integer.parseInt(pathProperties.getProperty(FIXED_DELAY, "0"));
+			if (fixedDelay > 0) {
+				logger.info("Sleeping for " + fixedDelay + "ms");
+				Thread.sleep(fixedDelay);
+			}
+		} catch (NumberFormatException e) {
+			logger.debug("Unable to parse " + FIXED_DELAY + " as a number: "
+					+ pathProperties.getProperty(FIXED_DELAY, "0"));
+		} catch (InterruptedException e) {
+			logger.error("IntrerruptedException while sleeping", e);
+		}
+		try {
+			int maxDelay = Integer.parseInt(pathProperties.getProperty(RANDOM_DELAY, "0"));
+			if (maxDelay > 0) {
+				final int randomDelay = RANDOM.nextInt(maxDelay);
+				logger.info("Sleeping for " + randomDelay + "ms");
+				Thread.sleep(randomDelay);
+			}
+		} catch (NumberFormatException e) {
+			logger.debug("Unable to parse " + RANDOM_DELAY + " as a number: "
+					+ pathProperties.getProperty(RANDOM_DELAY, "0"));
+		} catch (InterruptedException e) {
+			logger.error("IntrerruptedException while sleeping", e);
+		}
+
 	}
 
 	/**
@@ -271,12 +320,13 @@ public final class ResponseBuilder {
 			if (stream == null) {
 				logger.debug("No path.properties at " + derivedPath);
 				if (pathProperties == null) { // walk back up the path looking for path.properties
-					pathProperties = loadPropertiesFromStream(this.loadFile(derivedPath, PATH_PROPERTIES_NAME,
-							PATH_PROPERTIES_EXT));
+					pathProperties = new Properties(GLOBAL_DEFAULTS);
+					pathProperties.putAll(loadPropertiesFromStream(this.loadFile(derivedPath, PATH_PROPERTIES_NAME,
+							PATH_PROPERTIES_EXT)));
 				}
 			} else {
 				logger.debug("Found path.properties at " + derivedPath);
-				pathProperties = new Properties();
+				pathProperties = new Properties(GLOBAL_DEFAULTS);
 				pathProperties.load(stream);
 				String key = "";
 				String property = "";
@@ -540,7 +590,10 @@ public final class ResponseBuilder {
 		context.put("requestHeaders", this.requestHeaders);
 		context.put("requestMethod", this.requestMethod);
 		context.put("pathInfo", this.requestPath);
+		context.put("context", this.servletContext);
+		context.put("esc", new EscapeTool());
 		context.put("request", requestBody);
+		context.put("classpathLocation", CLASSPATH_LOCATION);
 		try {
 			if (ProbableContentType.XML.equals(this.probableContentType)) {
 				context.put("request", new XmlTool().parse(requestBody));
@@ -568,5 +621,34 @@ public final class ResponseBuilder {
 		ve.setProperty(VelocityEngine.OUTPUT_ENCODING, UTF8);
 		ve.init();
 		return ve;
+	}
+
+	/**
+	 * reads default.path.properties.
+	 * 
+	 * @return a Properties containing the global defaults.
+	 */
+	protected static Properties getGlobalDefaults() {
+		Properties properties = new Properties();
+		try {
+			properties.load(ResponseBuilder.class.getResourceAsStream("/" + DEFAULT_PATH_PROPERTIES_FILE));
+		} catch (IOException | RuntimeException e) {
+			logger.error("Unable to load default properties from classpath: /" + DEFAULT_PATH_PROPERTIES_FILE, e);
+		}
+		return properties;
+	}
+
+	/**
+	 * @return the location of default.path.properties (the containing folder).
+	 */
+	protected static String getClassesLocation() {
+		try {
+			URL resource = ResponseBuilder.class.getResource("/" + DEFAULT_PATH_PROPERTIES_FILE);
+			logger.info("Found " + DEFAULT_PATH_PROPERTIES_FILE + " at " + resource);
+			return resource.getPath().replace(DEFAULT_PATH_PROPERTIES_FILE, "");
+		} catch (RuntimeException e) {
+			logger.error("Unable to find location of file in classpath: /" + DEFAULT_PATH_PROPERTIES_FILE, e);
+		}
+		return "";
 	}
 }
