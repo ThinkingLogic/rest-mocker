@@ -268,7 +268,7 @@ public final class ResponseBuilder {
 			return 500;
 		}
 		try {
-			return Integer.parseInt(IOUtils.toString(stream, UTF8));
+			return Integer.parseInt(IOUtils.toString(stream, UTF8).trim());
 		} catch (IOException | RuntimeException e) {
 			logger.error("Unable to get status from stream", e);
 			return 500;
@@ -421,7 +421,7 @@ public final class ResponseBuilder {
 				if (resource != null) {
 					return shortType;
 				}
-				// try to find type/default.body
+				// try to find type/path.properties
 				filename = derivedPath + shortType + "/" + PATH_PROPERTIES_FILE;
 				logger.debug("Trying to match Accept header '" + type + "': Looking for " + filename);
 				resource = this.getClass().getResource(filename);
