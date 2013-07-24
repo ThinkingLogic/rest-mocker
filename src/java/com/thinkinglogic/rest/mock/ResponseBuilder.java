@@ -3,6 +3,7 @@ package com.thinkinglogic.rest.mock;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -20,7 +21,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
-import org.apache.velocity.tools.generic.EscapeTool;
 import org.apache.velocity.tools.generic.XmlTool;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
@@ -96,6 +96,12 @@ public final class ResponseBuilder {
 
 	/** The name of the path property that specifies whether to parse the response as a velocity template (true/false). */
 	public static final String VELOCITY = "velocity";
+
+	/**
+	 * The name of the path property that specifies a semi-colon separated list of the velocity tools to put in the
+	 * velocity context (name=class;name=class).
+	 */
+	public static final String VELOCITY_TOOLS = "velocity.tools";
 
 	/** The name of the path property that specifies a fixed delay before responding (milliseconds). */
 	public static final String FIXED_DELAY = "fixed.delay";
@@ -620,12 +626,12 @@ public final class ResponseBuilder {
 	 */
 	protected String parseResponse(final String body) {
 		VelocityContext context = new VelocityContext();
+		addVelocityTools(context);
 		context.put("queryParams", this.queryParams);
 		context.put("requestHeaders", this.requestHeaders);
 		context.put("requestMethod", this.requestMethod);
 		context.put("pathInfo", this.requestPath);
 		context.put("context", this.servletContext);
-		context.put("esc", new EscapeTool());
 		context.put("request", requestBody);
 		context.put("classpathLocation", CLASSPATH_LOCATION);
 		try {
@@ -640,6 +646,35 @@ public final class ResponseBuilder {
 		final StringWriter stringWriter = new StringWriter();
 		VELOCITY_ENGINE.evaluate(context, stringWriter, "Velocity", body);
 		return stringWriter.toString();
+	}
+
+	/**
+	 * Places all configured tools in the specified context. Tools are specified in pathProperties in the
+	 * {@link #VELOCITY_TOOLS} property - which specified a semi-colon separated list of tools. Each tool should be in
+	 * the format name=class, where name is the key by which the tool will be placed in the context and class is the
+	 * class of the tool. The tool must have a no-arg constructor.
+	 * 
+	 * @param context the velocity context to put tools in.
+	 */
+	protected void addVelocityTools(final VelocityContext context) {
+		final String property = this.pathProperties.getProperty(VELOCITY_TOOLS, "").trim();
+		logger.debug("Attempting to add velocity tools defined by: " + property);
+		String[] tools = property.split(";");
+		for (String string : tools) {
+			String[] split = string.trim().split("=");
+			if (split.length == 2) {
+				String name = split[0].trim();
+				String clazz = split[1].trim();
+				logger.debug("Adding velocity tool to context. Name=" + name + ", class=" + clazz);
+				try {
+					context.put(name, Class.forName(clazz).getConstructor().newInstance());
+				} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+						| InvocationTargetException | NoSuchMethodException | SecurityException
+						| ClassNotFoundException e) {
+					logger.error("Unable to put velocity tool in context. Name=" + name + ", class=" + clazz, e);
+				}
+			}
+		}
 	}
 
 	/**
