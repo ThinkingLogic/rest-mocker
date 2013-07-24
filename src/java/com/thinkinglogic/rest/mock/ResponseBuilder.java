@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -94,6 +95,22 @@ public final class ResponseBuilder {
 	/** The name of the path property that identifies a file by evaluating an XPath expression against the request body. */
 	public static final String FILE_XPATH = "file.xpath";
 
+	/**
+	 * The name of the path property that identifies variables in the request path (this is a semi-colon separated list
+	 * of possible matching paths). See {@link #replacePathParams()} for usage.
+	 */
+	public static final String PATH_PARAMS = "path.parameters";
+	/**
+	 * The name of the path property that identifies a directory by a path parameter. Used only in conjunction with
+	 * {@link #PATH_PARAMS}.
+	 */
+	public static final String DIR_PATH_PARAM = "dir.pathParam";
+	/**
+	 * The name of the path property that identifies a file by a path parameter. Used only in conjunction with
+	 * {@link #PATH_PARAMS}.
+	 */
+	public static final String FILE_PATH_PARAM = "file.pathParam";
+
 	/** The name of the path property that specifies whether to parse the response as a velocity template (true/false). */
 	public static final String VELOCITY = "velocity";
 
@@ -118,6 +135,7 @@ public final class ResponseBuilder {
 
 	private final Map<String, String> queryParams;
 	private final Map<String, String> requestHeaders;
+	private final Map<String, String> pathParams = new HashMap<>();
 	private final String requestBody;
 	private final String requestPath;
 	private final String requestMethod;
@@ -151,6 +169,7 @@ public final class ResponseBuilder {
 		this.requestPath = pathInfo.startsWith("/") ? pathInfo : "/" + pathInfo;
 		this.servletContext = servletContext;
 		this.setDerivedPath(requestPath);
+		replacePathParams();
 		determineContentType();
 		this.determinePath();
 		this.determineFile();
@@ -179,6 +198,59 @@ public final class ResponseBuilder {
 			contentType = ProbableContentType.JSON;
 		}
 		this.probableContentType = contentType;
+	}
+
+	/**
+	 * Looks back up the path from the current derivedPath to find the nearest path.properties, then looks there for
+	 * path.parameters. If found it attempts to match the value (actually each value - path.properties is a semi-colon
+	 * separated list) against the request path, treating any path elements bounded by curly brackets as wildcards (and
+	 * recording their values in pathParams). If the value in path.parameters matches the request path, it replaces the
+	 * derivedPath. For instance, if path.parameters=/books/{author}/{title}/hardback and the request path is
+	 * /books/Tolkien/Lord of the Rings/hardback then the pathParams map will be populated with author=Tolkien and
+	 * title=Lord of the Rings and the derivedPath will be set to /books/{author}/{title}/hardback (this is the path we
+	 * will examine for path.properties and response files).
+	 */
+	protected void replacePathParams() {
+		// look for the nearest path.properties
+		Properties temp = new Properties();
+		logger.debug("Looking for " + PATH_PARAMS);
+		temp.putAll(loadPropertiesFromStream(this.loadFile(derivedPath, PATH_PROPERTIES_NAME, PATH_PROPERTIES_EXT)));
+		String property = temp.getProperty(PATH_PARAMS, "");
+		if ("" == property) {
+			logger.debug("No " + PATH_PARAMS + " found");
+			return;
+		}
+		logger.debug(PATH_PARAMS + ":" + property);
+		String[] pathProperties = property.split(";");
+		outer: for (String pathProperty : pathProperties) {
+			logger.debug("Attempting to match " + pathProperty + " against the request path: " + requestPath);
+			final String[] paramSplit = pathProperty.split("/");
+			final String[] requestSplit = this.requestPath.split("/");
+			StringBuilder replacementPath = new StringBuilder();
+			final Map<String, String> params = new HashMap<>();
+			if (paramSplit.length == requestSplit.length) {
+				for (int i = 0; i < paramSplit.length; i++) {
+					final String thisParam = paramSplit[i];
+					final String thisRequest = requestSplit[i];
+					if (thisRequest.equals(thisParam)) {
+						replacementPath.append(thisRequest).append("/");
+					} else if (thisParam.startsWith("{") && thisParam.endsWith("}")) {
+						final String paramName = thisParam.substring(1, thisParam.length() - 1);
+						params.put(paramName, thisRequest);
+						replacementPath.append(thisParam).append("/");
+						logger.debug("Matched path parameter " + thisParam + " = " + thisRequest);
+					} else {
+						logger.debug("Unmatched path parameter " + thisParam);
+						continue outer;
+					}
+				}
+				logger.debug("Matched " + pathProperty + " against the request path");
+				this.pathParams.putAll(params);
+				this.setDerivedPath(replacementPath.toString());
+				return;
+			}
+
+		}
 	}
 
 	/**
@@ -304,7 +376,7 @@ public final class ResponseBuilder {
 	/**
 	 * Loads the InputStream as a properties file.
 	 * 
-	 * @param stream the InputStream to load.
+	 * @param stream the InputStream to load. May be null, in which case nothing happens.
 	 * @return a Properties file based on the contents of the stream.
 	 */
 	protected Properties loadPropertiesFromStream(InputStream stream) {
@@ -382,6 +454,15 @@ public final class ResponseBuilder {
 				property = matchXPath(key);
 				if (property.length() > 0) {
 					logger.debug("Matched " + DIR_XPATH + ": " + key + "=" + property);
+					setDerivedPath(derivedPath + property);
+					determinePath();
+					return;
+				}
+
+				key = pathProperties.getProperty(DIR_PATH_PARAM, "");
+				property = getProperty(pathParams, key);
+				if (property.length() > 0) {
+					logger.debug("Matched " + DIR_PATH_PARAM + ": " + key + "=" + property);
 					setDerivedPath(derivedPath + property);
 					determinePath();
 					return;
@@ -526,6 +607,14 @@ public final class ResponseBuilder {
 			return;
 		}
 
+		key = pathProperties.getProperty(FILE_PATH_PARAM, "");
+		property = getProperty(pathParams, key);
+		if (property.length() > 0) {
+			logger.debug("Matched " + FILE_PATH_PARAM + ": " + key + "=" + property);
+			this.derivedName = property;
+			return;
+		}
+
 	}
 
 	/**
@@ -628,6 +717,7 @@ public final class ResponseBuilder {
 		VelocityContext context = new VelocityContext();
 		addVelocityTools(context);
 		context.put("queryParams", this.queryParams);
+		context.put("pathParams", this.pathParams);
 		context.put("requestHeaders", this.requestHeaders);
 		context.put("requestMethod", this.requestMethod);
 		context.put("pathInfo", this.requestPath);

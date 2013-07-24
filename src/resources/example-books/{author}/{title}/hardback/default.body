@@ -1,0 +1,5 @@
+<pre>
+This is the response for all hardback book requests
+Author: $pathParams.author
+Title: $pathParams.title
+</pre>
