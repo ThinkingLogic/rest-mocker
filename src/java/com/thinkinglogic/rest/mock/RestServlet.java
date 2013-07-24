@@ -2,6 +2,8 @@ package com.thinkinglogic.rest.mock;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.TreeMap;
@@ -21,6 +23,7 @@ public class RestServlet extends HttpServlet {
 	private static final Logger logger = Logger.getLogger(RestServlet.class);
 
 	private static final long serialVersionUID = 1L;
+	private static final String UTF8 = "UTF-8";
 
 	public static final String GET = "GET";
 	public static final String PUT = "PUT";
@@ -132,15 +135,16 @@ public class RestServlet extends HttpServlet {
 	/**
 	 * @param request the current request.
 	 * @return the query parameters, as a map.
+	 * @throws UnsupportedEncodingException
 	 */
-	protected Map<String, String> getQueryParams(final HttpServletRequest request) {
+	protected Map<String, String> getQueryParams(final HttpServletRequest request) throws UnsupportedEncodingException {
 		String queryString = notNullString(request.getQueryString());
 		Map<String, String> queryParams = new TreeMap<>();
 		String[] split = queryString.split("&");
 		for (String string : split) {
 			String[] strings = string.split("=");
 			if (strings.length == 2) {
-				queryParams.put(strings[0], strings[1]);
+				queryParams.put(URLDecoder.decode(strings[0], UTF8), URLDecoder.decode(strings[1], UTF8));
 			}
 		}
 		return queryParams;
