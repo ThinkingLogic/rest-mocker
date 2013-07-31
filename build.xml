@@ -101,6 +101,7 @@
 	<target name="build" description="Builds the application" depends="resolve-dependencies">
 		<!-- compile -->
 		<delete dir="${build.classes.dir}" failonerror="false" />
+		<delete dir="${jetty.dir}/webapps/rest-mocker" failonerror="false" />
 		<mkdir dir="${build.classes.dir}" />
 		<javac srcdir="${java.src.dir}" destdir="${build.classes.dir}" includeantruntime="false"
 			debug="on" debuglevel="vars,lines,source" deprecation="on" classpathref="build.class.path"

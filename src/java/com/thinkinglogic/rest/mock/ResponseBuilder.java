@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Random;
+import java.util.Set;
 import java.util.TreeMap;
 
 import javax.servlet.http.HttpServletResponse;
@@ -113,6 +114,12 @@ public final class ResponseBuilder {
 
 	/** The name of the path property that specifies whether to parse the response as a velocity template (true/false). */
 	public static final String VELOCITY = "velocity";
+
+	/**
+	 * The name of the path property that specifies whether to parse response headers as velocity templates
+	 * (true/false).
+	 */
+	public static final String VELOCITY_HEADERS = "velocity.headers";
 
 	/**
 	 * The name of the path property that specifies a semi-colon separated list of the velocity tools to put in the
@@ -261,16 +268,30 @@ public final class ResponseBuilder {
 	public void handleResponse(final HttpServletResponse response) {
 		handleDelay();
 		Map<String, String> responseHeaders = getResponseHeaders();
-		for (Entry<String, String> entry : responseHeaders.entrySet()) {
-			response.addHeader(entry.getKey(), entry.getValue());
-		}
 		int status = getStatus();
 		response.setStatus(status);
 		String body = getResponseBody();
 
-		if (Boolean.parseBoolean(pathProperties.getProperty(VELOCITY, "false"))) {
-			logger.info("Parsing response as a Velocity template");
-			body = parseResponse(body);
+		if (useVelocity()) {
+			VelocityContext context = createVelocityContext();
+			// parse the body
+			if (Boolean.parseBoolean(pathProperties.getProperty(VELOCITY, "false"))) {
+				logger.info("Parsing response as a Velocity template");
+				body = parseTemplate(body, context);
+			}
+			// parse each of the headers
+			if (Boolean.parseBoolean(pathProperties.getProperty(VELOCITY_HEADERS, "false"))) {
+				logger.info("Parsing response headers as Velocity templates");
+				Set<Entry<String, String>> headers = responseHeaders.entrySet();
+				for (Entry<String, String> entry : headers) {
+					logger.debug("Parsing response header as a Velocity template: " + entry.getKey());
+					entry.setValue(parseTemplate(entry.getValue(), context));
+				}
+			}
+		}
+
+		for (Entry<String, String> entry : responseHeaders.entrySet()) {
+			response.addHeader(entry.getKey(), entry.getValue());
 		}
 
 		logger.info("Sending " + status + " response: headers=" + responseHeaders + ", body=\n" + body);
@@ -282,6 +303,14 @@ public final class ResponseBuilder {
 		} catch (IOException e) {
 			logger.error("Unable to write to, flush or close the response writer", e);
 		}
+	}
+
+	/**
+	 * @return true if Velocity should be used to parse any of the response elements, false otherwise.
+	 */
+	protected boolean useVelocity() {
+		return Boolean.parseBoolean(pathProperties.getProperty(VELOCITY, "false"))
+				|| Boolean.parseBoolean(pathProperties.getProperty(VELOCITY_HEADERS, "false"));
 	}
 
 	/**
@@ -708,12 +737,22 @@ public final class ResponseBuilder {
 	}
 
 	/**
-	 * Parses the specified string as a velocity template.
+	 * /** Parses the specified string as a velocity template.
 	 * 
 	 * @param body the string to parse.
+	 * @param context the VelocityContext used when parsing the template.
 	 * @return the string, parsed as a velocity template.
 	 */
-	protected String parseResponse(final String body) {
+	protected String parseTemplate(final String template, VelocityContext context) {
+		final StringWriter stringWriter = new StringWriter();
+		VELOCITY_ENGINE.evaluate(context, stringWriter, "Velocity", template);
+		return stringWriter.toString();
+	}
+
+	/**
+	 * @return a new {@link VelocityContext}, populated with information about the request.
+	 */
+	protected VelocityContext createVelocityContext() {
 		VelocityContext context = new VelocityContext();
 		addVelocityTools(context);
 		context.put("queryParams", this.queryParams);
@@ -733,9 +772,7 @@ public final class ResponseBuilder {
 		} catch (RuntimeException e) {
 			logger.error("Unable to parse requestBody as " + this.probableContentType, e);
 		}
-		final StringWriter stringWriter = new StringWriter();
-		VELOCITY_ENGINE.evaluate(context, stringWriter, "Velocity", body);
-		return stringWriter.toString();
+		return context;
 	}
 
 	/**
