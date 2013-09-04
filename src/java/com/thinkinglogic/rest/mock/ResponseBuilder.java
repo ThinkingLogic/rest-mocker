@@ -193,7 +193,7 @@ public final class ResponseBuilder {
 		if (requestBody.startsWith("<")) {
 			try {
 				DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
-				domFactory.setNamespaceAware(true);
+				domFactory.setNamespaceAware(false);
 				DocumentBuilder builder = domFactory.newDocumentBuilder();
 				xmlDocument = builder.parse(IOUtils.toInputStream(requestBody, UTF8));
 				xPathFactory = XPathFactory.newInstance();
@@ -560,6 +560,7 @@ public final class ResponseBuilder {
 	 */
 	protected String matchJsonPath(final String path) {
 		if (path.length() > 0 & probableContentType == ProbableContentType.JSON) {
+			logger.debug("attempting to match jsonpath: " + path);
 			try {
 				return replaceEmptyValue(JsonPath.read(requestBody, path));
 			} catch (Exception e) {
@@ -580,8 +581,19 @@ public final class ResponseBuilder {
 	 */
 	protected String matchXPath(final String path) {
 		if (path.length() > 0 & probableContentType == ProbableContentType.XML) {
+			logger.debug("attempting to match xpath: " + path);
 			try {
-				return replaceEmptyValue(xPathFactory.newXPath().evaluate(path, this.xmlDocument));
+				String value = replaceEmptyValue(xPathFactory.newXPath().evaluate(path, this.xmlDocument));
+				logger.debug(path + "=" + value);
+				// if the xml contains namespaces and we have extracted the name of an element, it may be of the form
+				// 'ns2:elementName'
+				// a colon is an illegal character in path and filenames, so remove everything up to and including the
+				// ':'
+				if (value.indexOf(":") >= 0) {
+					value = value.substring(value.indexOf(":") + 1);
+					logger.debug("  -> " + path + "=" + value);
+				}
+				return value;
 			} catch (Exception e) {
 				logger.error("Unable to evaluate XPATH: " + path, e);
 				return emptyValueReplacement;
