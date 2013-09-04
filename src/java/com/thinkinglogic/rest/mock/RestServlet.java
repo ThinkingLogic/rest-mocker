@@ -94,19 +94,17 @@ public class RestServlet extends HttpServlet {
 	protected void handleRequest(HttpServletRequest request, HttpServletResponse response) throws ServletException,
 			IOException {
 		logger.debug("Received request: " + request);
-		String path = request.getPathInfo().substring(1);
 		Map<String, String> queryParams = getQueryParams(request);
 		Map<String, String> headers = getHeaders(request);
 		String requestMethod = request.getMethod().toUpperCase();
 		String body = getBody(request, requestMethod);
 
-		logger.info("Received " + requestMethod + " request: path=/" + path);
+		logger.info("Received " + requestMethod + " request: path=" + request.getPathInfo());
 		logger.info("queryString: " + request.getQueryString());
 		logger.info("headers: " + headers);
 		logger.info("body: " + body);
 
-		ResponseBuilder builder = new ResponseBuilder(queryParams, headers, body, path, requestMethod,
-				request.getContextPath());
+		ResponseBuilder builder = new ResponseBuilder(queryParams, headers, body, request);
 		builder.handleResponse(response);
 	}
 

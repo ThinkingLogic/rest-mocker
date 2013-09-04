@@ -118,6 +118,7 @@
 			<fileset dir="${war.content.dir}">
 				<!-- exclude web.xml as that is explicitly included above -->
 				<exclude name="${war.content.dir}/WEB-INF/web.xml" />
+				<exclude name="**/*.jar" />
 			</fileset>
 			<lib dir="${web.lib.dir}"/>
 			<manifest>

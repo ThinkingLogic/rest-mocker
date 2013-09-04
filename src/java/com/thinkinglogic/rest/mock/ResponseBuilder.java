@@ -13,6 +13,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -23,7 +24,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
-import org.apache.velocity.tools.generic.XmlTool;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
@@ -147,6 +147,7 @@ public final class ResponseBuilder {
 	private final String requestPath;
 	private final String requestMethod;
 	private final String servletContext;
+	private final HttpServletRequest requestObject;
 	private ProbableContentType probableContentType;
 
 	private String derivedPath;
@@ -163,18 +164,18 @@ public final class ResponseBuilder {
 	 * @param queryParams query parameters.
 	 * @param headers request headers.
 	 * @param body body of the request (or an empty string).
-	 * @param pathInfo the path of the request (request.getPathInfo()).
-	 * @param requestMethod GET/POST/PUT/DELETE.
+	 * @param requestObject the {@link HttpServletRequest}.
 	 */
-	public ResponseBuilder(Map<String, String> queryParams, Map<String, String> headers, String body, String pathInfo,
-			String requestMethod, String servletContext) {
+	public ResponseBuilder(Map<String, String> queryParams, Map<String, String> headers, String body,
+			HttpServletRequest requestObject) {
 		super();
-		this.requestMethod = requestMethod;
+		this.requestObject = requestObject;
+		this.requestMethod = requestObject.getMethod().toUpperCase();
 		this.queryParams = queryParams;
 		this.requestHeaders = headers;
 		this.requestBody = notNullString(body).trim();
-		this.requestPath = pathInfo.startsWith("/") ? pathInfo : "/" + pathInfo;
-		this.servletContext = servletContext;
+		this.requestPath = requestObject.getPathInfo();
+		this.servletContext = requestObject.getContextPath();
 		this.setDerivedPath(requestPath);
 		replacePathParams();
 		determineContentType();
@@ -193,7 +194,7 @@ public final class ResponseBuilder {
 		if (requestBody.startsWith("<")) {
 			try {
 				DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
-				domFactory.setNamespaceAware(true);
+				domFactory.setNamespaceAware(false);
 				DocumentBuilder builder = domFactory.newDocumentBuilder();
 				xmlDocument = builder.parse(IOUtils.toInputStream(requestBody, UTF8));
 				xPathFactory = XPathFactory.newInstance();
@@ -560,6 +561,7 @@ public final class ResponseBuilder {
 	 */
 	protected String matchJsonPath(final String path) {
 		if (path.length() > 0 & probableContentType == ProbableContentType.JSON) {
+			logger.debug("attempting to match jsonpath: " + path);
 			try {
 				return replaceEmptyValue(JsonPath.read(requestBody, path));
 			} catch (Exception e) {
@@ -580,8 +582,19 @@ public final class ResponseBuilder {
 	 */
 	protected String matchXPath(final String path) {
 		if (path.length() > 0 & probableContentType == ProbableContentType.XML) {
+			logger.debug("attempting to match xpath: " + path);
 			try {
-				return replaceEmptyValue(xPathFactory.newXPath().evaluate(path, this.xmlDocument));
+				String value = replaceEmptyValue(xPathFactory.newXPath().evaluate(path, this.xmlDocument));
+				logger.debug(path + "=" + value);
+				// if the xml contains namespaces and we have extracted the name of an element, it may be of the form
+				// 'ns2:elementName'
+				// a colon is an illegal character in path and filenames, so remove everything up to and including the
+				// ':'
+				if (value.indexOf(":") >= 0) {
+					value = value.substring(value.indexOf(":") + 1);
+					logger.debug("  -> " + path + "=" + value);
+				}
+				return value;
 			} catch (Exception e) {
 				logger.error("Unable to evaluate XPATH: " + path, e);
 				return emptyValueReplacement;
@@ -762,10 +775,11 @@ public final class ResponseBuilder {
 		context.put("pathInfo", this.requestPath);
 		context.put("context", this.servletContext);
 		context.put("request", requestBody);
+		context.put("requestObject", requestObject);
 		context.put("classpathLocation", CLASSPATH_LOCATION);
 		try {
 			if (ProbableContentType.XML.equals(this.probableContentType)) {
-				context.put("request", new XmlTool().parse(requestBody));
+				context.put("request", new XmlToolWrapper(requestBody));
 			} else if (ProbableContentType.JSON.equals(this.probableContentType)) {
 				context.put("request", JsonProviderFactory.createProvider().parse(requestBody));
 			}
@@ -847,4 +861,5 @@ public final class ResponseBuilder {
 		}
 		return "";
 	}
+
 }

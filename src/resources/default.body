@@ -26,7 +26,7 @@
 	<p>On receiving an http request, the REST mocker will attempt to match the request to a set of resources on the classpath, looking for a 'path.properties' file in a directory matching the request path (but see also <a href="#pathparameters">Path parameters</a> below). If one is found, then mocker will attempt to find a sub-directory matching the properties of the request: </p>
 	<p>path.properties will be examined for any of the following properties, in order: </p>
 	<ol>
-		<li>dir.method - (if 'dir.method=true') mocker will look in a subdirectory matching the request (GET, POST, PUT, DELETE)</li>
+		<li>dir.method - (if 'dir.method=true') mocker will look in a subdirectory matching the request method (GET, POST, PUT, DELETE)</li>
 		<li>dir.header - mocker will look in a subdirectory matching the specified request header. Note that there is special handling for the 'Accept' header, such that mocker will look for a subdirectory that matches any of the mime types in the Accept header, matching only the part after '/' (so a subdirectory of 'html' for an Accept header of 'text/html', etc).</li>
 		<li>dir.queryParam - mocker will look in a subdirectory matching the specified query parameter.</li>
 		<li>dir.jsonpath - (if the request has a json-formatted body) the <a href="http://goessner.net/articles/JsonPath/">json path</a> expression will be evaluated, and mocker will look for a matching subdirectory</li>
@@ -36,7 +36,7 @@
 	<p>This process is repeated until no further subdirectories can be found (or until the first subdirectory without a path.properties is reached). If <em>no</em> path.properties file can be found matching the full request path, then mocker will walk back up the directory structure looking in each parent folder until it finds a path.properties file.</p>
 	<p>At this point, path.properties file will be examined for instructions to match a particular <em>file</em>, checking each of the following (in order) until a match is found:</p>
 	<ol>
-		<li>file.method - (if 'file.method=true') mocker will look for a file matching the request (GET, POST, PUT, DELETE)</li>
+		<li>file.method - (if 'file.method=true') mocker will look for a file matching the request method (GET, POST, PUT, DELETE)</li>
 		<li>file.header - mocker will look for a file matching the specified request header. Note that there is special handling for the 'Accept' header, such that mocker will look for a file that matches any of the mime types in the Accept header, matching only the part after '/' (so a filename of 'html' for an Accept header of 'text/html', etc).</li>
 		<li>file.queryParam - mocker will look for a file matching the specified query parameter.</li>
 		<li>file.jsonpath - (if the request has a json-formatted body) the json path expression will be evaluated, and mocker will look for a matching file</li>
@@ -107,7 +107,8 @@
 	<div>
 	$request
 	</div>
-	<p>If the request body is JSON, you can refer to specific properties as $request.propertyName. If the request is XML, you can refer to specific elements as ${esc.dollar}request.propertyName.text</p>
+	<p>If the request body is JSON, you can refer to specific properties as $request.propertyName. If the request is XML, you can refer to properties as $request.elementName.text or $request.elementName.attributeName<sup>*</sup>.</p>
+	<p style="font-size:90%">*: The request body is parsed as a Velocity XmlTool (having first been stripped of namespace information) so you can refer to specific elements as $request.elementName.childElement (without having to include the namespace). Please note that the ${esc.dollar}request object is the root element, so you do not need to include the name of the root element).
 
 </body>
 </html>
