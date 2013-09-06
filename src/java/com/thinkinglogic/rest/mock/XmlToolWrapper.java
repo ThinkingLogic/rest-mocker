@@ -41,9 +41,10 @@ public class XmlToolWrapper extends XmlTool {
 	 * @return
 	 */
 	public static String removeXmlNamespace(String xmlString) {
-		return xmlString.replaceAll("xmlns:", "") /* remove xmlns: */
-		.replaceAll("</[^>]*?:", "</") /* remove closing tags prefix */
-		.replaceAll("<[^>]*?:", "<"); /* remove opening tag prefix */
+		return xmlString.replaceAll("<!--.*?-->", "") /* remove comments */
+		.replaceAll("xmlns:", "") /* remove xmlns: */
+		.replaceAll("</[^> ]*?:", "</") /* remove closing tags prefix */
+		.replaceAll("<[^> ]*?:", "<"); /* remove opening tag prefix */
 	}
 
 	@Override
