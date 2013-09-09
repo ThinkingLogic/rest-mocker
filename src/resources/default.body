@@ -103,11 +103,12 @@
 	#end
 	</ul>
 	<p>You can refer to requestHeaders, queryParams and pathParams by name, e.g. ${esc.dollar}requestHeaders.Accept=$requestHeaders.Accept</p>
+	<p>The full HttpServletRequest object is made available in the context as ${esc.dollar}requestObject.</p>
 	<h4>Request Body: ${esc.dollar}request (empty for GET requests)</h4>
 	<div>
 	$request
 	</div>
-	<p>If the request body is JSON, you can refer to specific properties as $request.propertyName. If the request is XML, you can refer to properties as $request.elementName.text or $request.elementName.attributeName<sup>*</sup>.</p>
+	<p>If the request body is an html form or JSON, you can refer to specific properties as $request.propertyName. If the request is XML, you can refer to properties as $request.elementName.text or $request.elementName.attributeName<sup>*</sup>.</p>
 	<p style="font-size:90%">*: The request body is parsed as a Velocity XmlTool (having first been stripped of namespace information) so you can refer to specific elements as $request.elementName.childElement (without having to include the namespace). Please note that the ${esc.dollar}request object is the root element, so you do not need to include the name of the root element).
 
 </body>

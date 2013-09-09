@@ -782,6 +782,8 @@ public final class ResponseBuilder {
 				context.put("request", new XmlToolWrapper(requestBody));
 			} else if (ProbableContentType.JSON.equals(this.probableContentType)) {
 				context.put("request", JsonProviderFactory.createProvider().parse(requestBody));
+			} else {
+				context.put("request", new HtmlPostProperties(requestBody));
 			}
 		} catch (RuntimeException e) {
 			logger.error("Unable to parse requestBody as " + this.probableContentType, e);
