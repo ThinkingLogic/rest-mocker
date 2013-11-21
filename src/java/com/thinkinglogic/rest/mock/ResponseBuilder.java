@@ -211,11 +211,11 @@ public final class ResponseBuilder {
 	/**
 	 * Looks back up the path from the current derivedPath to find the nearest path.properties, then looks there for
 	 * path.parameters. If found it attempts to match the value (actually each value - path.properties is a semi-colon
-	 * separated list) against the request path, treating any path elements bounded by curly brackets as wildcards (and
+	 * separated list) against the request path, treating any path elements bounded by square brackets as wildcards (and
 	 * recording their values in pathParams). If the value in path.parameters matches the request path, it replaces the
-	 * derivedPath. For instance, if path.parameters=/books/{author}/{title}/hardback and the request path is
+	 * derivedPath. For instance, if path.parameters=/books/[author]/[title]/hardback and the request path is
 	 * /books/Tolkien/Lord of the Rings/hardback then the pathParams map will be populated with author=Tolkien and
-	 * title=Lord of the Rings and the derivedPath will be set to /books/{author}/{title}/hardback (this is the path we
+	 * title=Lord of the Rings and the derivedPath will be set to /books/[author]/[title]/hardback (this is the path we
 	 * will examine for path.properties and response files).
 	 */
 	protected void replacePathParams() {
@@ -242,7 +242,7 @@ public final class ResponseBuilder {
 					final String thisRequest = requestSplit[i];
 					if (thisRequest.equals(thisParam)) {
 						replacementPath.append(thisRequest).append("/");
-					} else if (thisParam.startsWith("{") && thisParam.endsWith("}")) {
+					} else if (thisParam.startsWith("'") && thisParam.endsWith("'")) {
 						final String paramName = thisParam.substring(1, thisParam.length() - 1);
 						params.put(paramName, thisRequest);
 						replacementPath.append(thisParam).append("/");

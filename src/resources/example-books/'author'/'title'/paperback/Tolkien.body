@@ -2,5 +2,5 @@
 This is the response for all Tolkien paperback book requests
 Author: $pathParams.author
 Title: $pathParams.title
-This response has been generated from /example-books/{author}/{title}/paperback/Tolkien.body
+This response has been generated from /example-books/'author'/'title'/paperback/Tolkien.body
 </pre>

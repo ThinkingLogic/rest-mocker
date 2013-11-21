@@ -5,111 +5,111 @@
 
 <head>
 
-	<title>REST Mocker</title>
+    <title>REST Mocker</title>
 
 </head>
 
 <body>
-	<h1>Welcome to the REST Mocker!</h1>
-	<p>The <strong>REST Mocker</strong> provides canned responses to REST requests, and allows you to decide <em>which</em> canned response to return based on matching one or more of:</p>
-	<ul>
-		<li>The request method (GET, POST, PUT or DELETE)</li>
-		<li>Request Headers</li>
-		<li>Query Parameters</li>
-		<li>JSON Path expressions</li>
-		<li>xpath expressions</li>
-	</ul>
-	<p>The intended usage is to replace (mock) a REST service for development and testing purposes - it allows you to develop and test against a known set of responses, and also test timeouts using a fixed or random delay.</p>
-	<h3>How it works</h3>
-	<p>The following text attempts to cover <em>all</em> of the options you have available, but you don't have to use any of them. All you have to do is create a default.body file containing the response you want in a file structure that matches the request path. That's it, really!</p>
-	<p>This is easier to understand by <a href="./example">example</a> - click the link to to try it out. You can find the matching files (path.properties etc) in <br/> ${classpathLocation}example.</p>
-	<p>On receiving an http request, the REST mocker will attempt to match the request to a set of resources on the classpath, looking for a 'path.properties' file in a directory matching the request path (but see also <a href="#pathparameters">Path parameters</a> below). If one is found, then mocker will attempt to find a sub-directory matching the properties of the request: </p>
-	<p>path.properties will be examined for any of the following properties, in order: </p>
-	<ol>
-		<li>dir.method - (if 'dir.method=true') mocker will look in a subdirectory matching the request method (GET, POST, PUT, DELETE)</li>
-		<li>dir.header - mocker will look in a subdirectory matching the specified request header. Note that there is special handling for the 'Accept' header, such that mocker will look for a subdirectory that matches any of the mime types in the Accept header, matching only the part after '/' (so a subdirectory of 'html' for an Accept header of 'text/html', etc).</li>
-		<li>dir.queryParam - mocker will look in a subdirectory matching the specified query parameter.</li>
-		<li>dir.jsonpath - (if the request has a json-formatted body) the <a href="http://goessner.net/articles/JsonPath/">json path</a> expression will be evaluated, and mocker will look for a matching subdirectory</li>
-		<li>dir.xpath - (if the request has an xml-formatted body) the <a href="https://en.wikipedia.org/wiki/XPath">XPath</a> expression will be evaluated, and mocker will look for a matching subdirectory</li>
-	</ol>
-	<p>If a property is specified, and matches a value in the request, then no other properties will be considered - even if there is no matching subdirectory. Generally you should only specify one of these properties in any given path.properties file.</p>
-	<p>This process is repeated until no further subdirectories can be found (or until the first subdirectory without a path.properties is reached). If <em>no</em> path.properties file can be found matching the full request path, then mocker will walk back up the directory structure looking in each parent folder until it finds a path.properties file.</p>
-	<p>At this point, path.properties file will be examined for instructions to match a particular <em>file</em>, checking each of the following (in order) until a match is found:</p>
-	<ol>
-		<li>file.method - (if 'file.method=true') mocker will look for a file matching the request method (GET, POST, PUT, DELETE)</li>
-		<li>file.header - mocker will look for a file matching the specified request header. Note that there is special handling for the 'Accept' header, such that mocker will look for a file that matches any of the mime types in the Accept header, matching only the part after '/' (so a filename of 'html' for an Accept header of 'text/html', etc).</li>
-		<li>file.queryParam - mocker will look for a file matching the specified query parameter.</li>
-		<li>file.jsonpath - (if the request has a json-formatted body) the json path expression will be evaluated, and mocker will look for a matching file</li>
-		<li>file.xpath - (if the request has an xml-formatted body) the xpath expression will be evaluated, and mocker will look for a matching file</li>
-	</ol>
-	<p>If a property is specified, and matches a value in the request, then no other properties will be considered - even if there is no matching file. Generally you should only specify one of these properties in any given path.properties file.</p>
-	<p>The filename will be used to look for 3 different files: </p>
-	<ul>
-		<li>{filename}.body - the response body</li>
-		<li>{filename}.status - the http response code</li>
-		<li>{filename}.headers - the response headers</li>
-	</ul>
-	<p>For any of the 3 types of file, if no file can be found with the matching name, then a default file from the current directory will be used instead (e.g. 'default.body'). If there is no default, then the parent directory will be examined for a matching filename, or default file, and so on.</p>
-	<h4><a id="pathparameters">Path parameters</a></h4>
-	<p>To allow you to mock services that have parameters in the path, the path.parameters property can be used to match variable names in the request path - for instance replacing a request of '/books/Tolkien/Lord of the Rings/hardback' with '/books/{author}/{title}/hardback', populating the pathParams map with author=Tolkien and title=Lord of the Rings.</p>
-	<p>When first matching a request to a set of resources, mocker will look for the nearest matching path.properties and examine that file for a path.parameters property (so in the books example, the path.properties file containing path.parameters would need to be in the /books directory, as that is the nearest parent directory that matches the request path). If the path matches the request path then it will be used instead of the request path, and further directory matching will take place as described above.</p>
-	<ul>
-		<li>path.parameters - a semi-colon separated list of paths containing parameters identified by curly brackets, e.g.: path.parameters=/books/{author}/{title}/hardback;/books/{author}/{title}/paperback</li>
-		<li>dir.pathParam - mocker will look in a subdirectory based on the value of the pathParam. e.g. dir.pathParam=author - (assuming a request path of /books/Tolkien/Silmarillion/paperback) mocker will look for /books/{author}/{title}/paperback/Tolkien/default.body etc.</li>
-		<li>file.pathParam - mocker will look for a file based on the value of the pathParam. e.g. file.pathParam=author - (assuming a request path of /books/Tolkien/Silmarillion/paperback) mocker will look for /books/{author}/{title}/paperback/Tolkien.body etc.</li>
-	</ul>
-	<p>For example, see <a href="example-books/Tolkien/Lord of the Rings/paperback">example-books/Tolkien/Lord of the Rings/paperback</a>.
-	<h4>Other configuration</h4>
-	<p>There are a few other properties you can specify in path.properties (and you can specify default values for these in default.path.properties):</p>
-	<ul>
-	    <li>empty.value.replacement - if specified (e.g. 'empty.value.replacement=foo'), then any empty request property (not specified or empty string) will be replaced with this value when matching a directory or file. This can be very useful for differentiating between an empty value and one that is not recognised, but should be used with care. It is a bad idea to put this in default.path.properties. </li>
-	    <li>fixed.delay - the number of milliseconds to sleep before sending the response</li>
-	    <li>random.delay - the maximum number of milliseconds to sleep before sending the response - the actual delay will be a random number between 0 and this number. Note that this is in addition to any fixed delay</li>
-	    <li>velocity - if true ('velocity=true'), then the response body is parsed as a velocity template before being returned</li>
-	    <li>velocity.tools - This is a (semi-colon separated) list of <a href="https://velocity.apache.org/tools/releases/2.0/">Velocity Tools</a> that will be placed in the VelocityContext when parsing the response. Each value should be in the format 'name=class' where the name is the key by which the tool will be placed in the context, and the class is the fully qualified classname. For instance:<br/>
-			<span style="font-family:Courier New; font-size: 60%;">velocity.tools=esc=org.apache.velocity.tools.generic.EscapeTool;math=org.apache.velocity.tools.generic.MathTool;date=org.apache.velocity.tools.generic.ComparisonDateTool;convert=org.apache.velocity.tools.generic.ConversionTool</span>
-			<ul>
-				<li>${esc.dollar}esc : <a href="https://velocity.apache.org/tools/releases/2.0/javadoc/org/apache/velocity/tools/generic/EscapeTool.html">EscapeTool</a> - For common escaping needs in Velocity templates (e.g. escaping html, xml, javascript etc.) </li>
-				<li>${esc.dollar}math : <a href="https://velocity.apache.org/tools/releases/2.0/javadoc/org/apache/velocity/tools/generic/MathTool.html">MathTool</a> - For performing Maths operations </li>
-				<li>${esc.dollar}date : <a href="https://velocity.apache.org/tools/releases/2.0/javadoc/org/apache/velocity/tools/generic/ComparisonDateTool.html">ComparisonDateTool</a> - For manipulating, formatting, and comparing dates. </li>
-				<li>${esc.dollar}convert : <a href="https://velocity.apache.org/tools/releases/2.0/javadoc/org/apache/velocity/tools/generic/ConversionTool.html">ConversionTool</a> - For converting String values to richer object types (such as dates). </li>
-			</ul>
-		</li>
-	</ul>
+    <h1>Welcome to the REST Mocker!</h1>
+    <p>The <strong>REST Mocker</strong> provides canned responses to REST requests, and allows you to decide <em>which</em> canned response to return based on matching one or more of:</p>
+    <ul>
+        <li>The request method (GET, POST, PUT or DELETE)</li>
+        <li>Request Headers</li>
+        <li>Query Parameters</li>
+        <li>JSON Path expressions</li>
+        <li>xpath expressions</li>
+    </ul>
+    <p>The intended usage is to replace (mock) a REST service for development and testing purposes - it allows you to develop and test against a known set of responses, and also test timeouts using a fixed or random delay.</p>
+    <h3>How it works</h3>
+    <p>The following text attempts to cover <em>all</em> of the options you have available, but you don't have to use any of them. All you have to do is create a default.body file containing the response you want in a file structure that matches the request path. That's it, really!</p>
+    <p>This is easier to understand by <a href="./example">example</a> - click the link to to try it out. You can find the matching files (path.properties etc) in <br/> ${classpathLocation}example.</p>
+    <p>On receiving an http request, the REST mocker will attempt to match the request to a set of resources on the classpath, looking for a 'path.properties' file in a directory matching the request path (but see also <a href="#pathparameters">Path parameters</a> below). If one is found, then mocker will attempt to find a sub-directory matching the properties of the request: </p>
+    <p>path.properties will be examined for any of the following properties, in order: </p>
+    <ol>
+        <li>dir.method - (if 'dir.method=true') mocker will look in a subdirectory matching the request method (GET, POST, PUT, DELETE)</li>
+        <li>dir.header - mocker will look in a subdirectory matching the specified request header. Note that there is special handling for the 'Accept' header, such that mocker will look for a subdirectory that matches any of the mime types in the Accept header, matching only the part after '/' (so a subdirectory of 'html' for an Accept header of 'text/html', etc).</li>
+        <li>dir.queryParam - mocker will look in a subdirectory matching the specified query parameter.</li>
+        <li>dir.jsonpath - (if the request has a json-formatted body) the <a href="http://goessner.net/articles/JsonPath/">json path</a> expression will be evaluated, and mocker will look for a matching subdirectory</li>
+        <li>dir.xpath - (if the request has an xml-formatted body) the <a href="https://en.wikipedia.org/wiki/XPath">XPath</a> expression will be evaluated, and mocker will look for a matching subdirectory</li>
+    </ol>
+    <p>If a property is specified, and matches a value in the request, then no other properties will be considered - even if there is no matching subdirectory. Generally you should only specify one of these properties in any given path.properties file.</p>
+    <p>This process is repeated until no further subdirectories can be found (or until the first subdirectory without a path.properties is reached). If <em>no</em> path.properties file can be found matching the full request path, then mocker will walk back up the directory structure looking in each parent folder until it finds a path.properties file.</p>
+    <p>At this point, path.properties file will be examined for instructions to match a particular <em>file</em>, checking each of the following (in order) until a match is found:</p>
+    <ol>
+        <li>file.method - (if 'file.method=true') mocker will look for a file matching the request method (GET, POST, PUT, DELETE)</li>
+        <li>file.header - mocker will look for a file matching the specified request header. Note that there is special handling for the 'Accept' header, such that mocker will look for a file that matches any of the mime types in the Accept header, matching only the part after '/' (so a filename of 'html' for an Accept header of 'text/html', etc).</li>
+        <li>file.queryParam - mocker will look for a file matching the specified query parameter.</li>
+        <li>file.jsonpath - (if the request has a json-formatted body) the json path expression will be evaluated, and mocker will look for a matching file</li>
+        <li>file.xpath - (if the request has an xml-formatted body) the xpath expression will be evaluated, and mocker will look for a matching file</li>
+    </ol>
+    <p>If a property is specified, and matches a value in the request, then no other properties will be considered - even if there is no matching file. Generally you should only specify one of these properties in any given path.properties file.</p>
+    <p>The filename will be used to look for 3 different files: </p>
+    <ul>
+        <li>{filename}.body - the response body</li>
+        <li>{filename}.status - the http response code</li>
+        <li>{filename}.headers - the response headers</li>
+    </ul>
+    <p>For any of the 3 types of file, if no file can be found with the matching name, then a default file from the current directory will be used instead (e.g. 'default.body'). If there is no default, then the parent directory will be examined for a matching filename, or default file, and so on.</p>
+    <h4><a id="pathparameters">Path parameters</a></h4>
+    <p>To allow you to mock services that have parameters in the path, the path.parameters property can be used to match variable names in the request path - for instance replacing a request of "/books/Tolkien/Lord of the Rings/hardback" with "/books/'author'/'title'/hardback", populating the pathParams map with author=Tolkien and title=Lord of the Rings.</p>
+    <p>When first matching a request to a set of resources, mocker will look for the nearest matching path.properties and examine that file for a path.parameters property (so in the books example, the path.properties file containing path.parameters would need to be in the /books directory, as that is the nearest parent directory that matches the request path). If the path matches the request path then it will be used instead of the request path, and further directory matching will take place as described above.</p>
+    <ul>
+        <li>path.parameters - a semi-colon separated list of paths containing parameters identified by single quotes, e.g.: path.parameters=/books/'author'/'title'/hardback;/books/'author'/'title'/paperback</li>
+        <li>dir.pathParam - mocker will look in a subdirectory based on the value of the pathParam. e.g. dir.pathParam=author - (assuming a request path of /books/Tolkien/Silmarillion/paperback) mocker will look for /books/'author'/'title'/paperback/Tolkien/default.body etc.</li>
+        <li>file.pathParam - mocker will look for a file based on the value of the pathParam. e.g. file.pathParam=author - (assuming a request path of /books/Tolkien/Silmarillion/paperback) mocker will look for /books/'author'/'title'/paperback/Tolkien.body etc.</li>
+    </ul>
+    <p>For example, see <a href="example-books/Tolkien/Lord of the Rings/paperback">example-books/Tolkien/Lord of the Rings/paperback</a>.
+    <h4>Other configuration</h4>
+    <p>There are a few other properties you can specify in path.properties (and you can specify default values for these in default.path.properties):</p>
+    <ul>
+        <li>empty.value.replacement - if specified (e.g. 'empty.value.replacement=foo'), then any empty request property (not specified or empty string) will be replaced with this value when matching a directory or file. This can be very useful for differentiating between an empty value and one that is not recognised, but should be used with care. It is a bad idea to put this in default.path.properties. </li>
+        <li>fixed.delay - the number of milliseconds to sleep before sending the response</li>
+        <li>random.delay - the maximum number of milliseconds to sleep before sending the response - the actual delay will be a random number between 0 and this number. Note that this is in addition to any fixed delay</li>
+        <li>velocity - if true ('velocity=true'), then the response body is parsed as a velocity template before being returned</li>
+        <li>velocity.tools - This is a (semi-colon separated) list of <a href="https://velocity.apache.org/tools/releases/2.0/">Velocity Tools</a> that will be placed in the VelocityContext when parsing the response. Each value should be in the format 'name=class' where the name is the key by which the tool will be placed in the context, and the class is the fully qualified classname. For instance:<br/>
+            <span style="font-family:Courier New; font-size: 60%;">velocity.tools=esc=org.apache.velocity.tools.generic.EscapeTool;math=org.apache.velocity.tools.generic.MathTool;date=org.apache.velocity.tools.generic.ComparisonDateTool;convert=org.apache.velocity.tools.generic.ConversionTool</span>
+            <ul>
+                <li>${esc.dollar}esc : <a href="https://velocity.apache.org/tools/releases/2.0/javadoc/org/apache/velocity/tools/generic/EscapeTool.html">EscapeTool</a> - For common escaping needs in Velocity templates (e.g. escaping html, xml, javascript etc.) </li>
+                <li>${esc.dollar}math : <a href="https://velocity.apache.org/tools/releases/2.0/javadoc/org/apache/velocity/tools/generic/MathTool.html">MathTool</a> - For performing Maths operations </li>
+                <li>${esc.dollar}date : <a href="https://velocity.apache.org/tools/releases/2.0/javadoc/org/apache/velocity/tools/generic/ComparisonDateTool.html">ComparisonDateTool</a> - For manipulating, formatting, and comparing dates. </li>
+                <li>${esc.dollar}convert : <a href="https://velocity.apache.org/tools/releases/2.0/javadoc/org/apache/velocity/tools/generic/ConversionTool.html">ConversionTool</a> - For converting String values to richer object types (such as dates). </li>
+            </ul>
+        </li>
+    </ul>
 
-	<h3>Information about the request, made available in the velocity context:</h3>
-	<h4>Request Method: ${esc.dollar}requestMethod: $requestMethod</h4>
-	<h4>Path info: ${esc.dollar}pathInfo: $pathInfo</h4>
-	#if($pathInfo.split("/").size() > 1)
-	<p>You can also obtain specific path elements, for example the first element of the path is: $pathInfo.split("/")[1]</p>
-	#end
-	<h4>Servlet context: ${esc.dollar}context: $context</h4>
-	<h4>Query Parameters: ${esc.dollar}queryParams </h4>
-	<ul>
-	#foreach($param in $queryParams.entrySet())
-		<li>$param.key = $param.value</li>
-	#end
-	</ul>
-	<h4>Request Headers: ${esc.dollar}requestHeaders</h4>
-	<ul>
-	#foreach($param in $requestHeaders.entrySet())
-		<li>$param.key = $param.value</li>
-	#end
-	</ul>
-	<h4>Path Parameters: ${esc.dollar}pathParams</h4>
-	<ul>
-	#foreach($param in $pathParams.entrySet())
-		<li>$param.key = $param.value</li>
-	#end
-	</ul>
-	<p>You can refer to requestHeaders, queryParams and pathParams by name, e.g. ${esc.dollar}requestHeaders.Accept=$requestHeaders.Accept</p>
-	<p>The full HttpServletRequest object is made available in the context as ${esc.dollar}requestObject.</p>
-	<h4>Request Body: ${esc.dollar}request (empty for GET requests)</h4>
-	<div>
-	$request
-	</div>
-	<p>If the request body is an html form or JSON, you can refer to specific properties as $request.propertyName. If the request is XML, you can refer to properties as $request.elementName.text or $request.elementName.attributeName<sup>*</sup>.</p>
-	<p style="font-size:90%">*: The request body is parsed as a Velocity XmlTool (having first been stripped of namespace information) so you can refer to specific elements as $request.elementName.childElement (without having to include the namespace). Please note that the ${esc.dollar}request object is the root element, so you do not need to include the name of the root element).
+    <h3>Information about the request, made available in the velocity context:</h3>
+    <h4>Request Method: ${esc.dollar}requestMethod: $requestMethod</h4>
+    <h4>Path info: ${esc.dollar}pathInfo: $pathInfo</h4>
+    #if($pathInfo.split("/").size() > 1)
+    <p>You can also obtain specific path elements, for example the first element of the path is: $pathInfo.split("/")[1]</p>
+    #end
+    <h4>Servlet context: ${esc.dollar}context: $context</h4>
+    <h4>Query Parameters: ${esc.dollar}queryParams </h4>
+    <ul>
+    #foreach($param in $queryParams.entrySet())
+        <li>$param.key = $param.value</li>
+    #end
+    </ul>
+    <h4>Request Headers: ${esc.dollar}requestHeaders</h4>
+    <ul>
+    #foreach($param in $requestHeaders.entrySet())
+        <li>$param.key = $param.value</li>
+    #end
+    </ul>
+    <h4>Path Parameters: ${esc.dollar}pathParams</h4>
+    <ul>
+    #foreach($param in $pathParams.entrySet())
+        <li>$param.key = $param.value</li>
+    #end
+    </ul>
+    <p>You can refer to requestHeaders, queryParams and pathParams by name, e.g. ${esc.dollar}requestHeaders.Accept=$requestHeaders.Accept</p>
+    <p>The full HttpServletRequest object is made available in the context as ${esc.dollar}requestObject.</p>
+    <h4>Request Body: ${esc.dollar}request (empty for GET requests)</h4>
+    <div>
+    $request
+    </div>
+    <p>If the request body is an html form or JSON, you can refer to specific properties as $request.propertyName. If the request is XML, you can refer to properties as $request.elementName.text or $request.elementName.attributeName<sup>*</sup>.</p>
+    <p style="font-size:90%">*: The request body is parsed as a Velocity XmlTool (having first been stripped of namespace information) so you can refer to specific elements as $request.elementName.childElement (without having to include the namespace). Please note that the ${esc.dollar}request object is the root element, so you do not need to include the name of the root element).
 
 </body>
 </html>
