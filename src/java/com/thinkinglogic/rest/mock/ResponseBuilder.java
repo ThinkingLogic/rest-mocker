@@ -1,10 +1,13 @@
 package com.thinkinglogic.rest.mock;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -136,9 +139,15 @@ public final class ResponseBuilder {
 	/** The name of the path property that should be used instead of empty (null or empty string) request properties. */
 	public static final String EMPTY_VALUE_REPLACEMENT = "empty.value.replacement";
 
+	/** The name of the path property that should be used instead of empty (null or empty string) request properties. */
+	public static final String DEFAULT_CUSTOM_PROPERTIES_FILE = "rest-mocker.properties";
+
 	private static final VelocityEngine VELOCITY_ENGINE = initialiseVelocity();
 	private static final Properties GLOBAL_DEFAULTS = getGlobalDefaults();
 	private static final String CLASSPATH_LOCATION = getClassesLocation();
+	private static final Map<Object, Object> SYSTEM_PROPERTIES = Collections.unmodifiableMap(new HashMap<>(System
+			.getProperties()));
+	private static final Map<Object, Object> CUSTOM_PROPERTIES = getCustomProperties();
 
 	private final Map<String, String> queryParams;
 	private final Map<String, String> requestHeaders;
@@ -768,6 +777,8 @@ public final class ResponseBuilder {
 	protected VelocityContext createVelocityContext() {
 		VelocityContext context = new VelocityContext();
 		addVelocityTools(context);
+		context.put("system", SYSTEM_PROPERTIES);
+		context.put("custom", CUSTOM_PROPERTIES);
 		context.put("queryParams", this.queryParams);
 		context.put("pathParams", this.pathParams);
 		context.put("requestHeaders", this.requestHeaders);
@@ -864,4 +875,26 @@ public final class ResponseBuilder {
 		return "";
 	}
 
+	/**
+	 * @return a Map containing all properties in the custom properties file (if one exists)
+	 */
+	protected static Map<Object, Object> getCustomProperties() {
+		// get the name of the properties file to load
+		String filename = System.getProperty(DEFAULT_CUSTOM_PROPERTIES_FILE, DEFAULT_CUSTOM_PROPERTIES_FILE);
+		File file = new File(filename);
+		if (file.exists()) {
+			logger.info("Loading custom properties from " + filename);
+			Properties properties = new Properties();
+			try {
+				properties.load(new FileInputStream(file));
+				return Collections.unmodifiableMap(new HashMap<Object, Object>(properties));
+			} catch (IOException e) {
+				logger.error("Unable to load custom proeprties file from" + filename, e);
+				System.out.println("Unable to load custom proeprties file from" + filename);
+			}
+		} else {
+			logger.info("No custom properties file found at: " + filename + " (" + file.getAbsolutePath() + ")");
+		}
+		return Collections.emptyMap();
+	}
 }

@@ -110,6 +110,10 @@
     </div>
     <p>If the request body is an html form or JSON, you can refer to specific properties as $request.propertyName. If the request is XML, you can refer to properties as $request.elementName.text or $request.elementName.attributeName<sup>*</sup>.</p>
     <p style="font-size:90%">*: The request body is parsed as a Velocity XmlTool (having first been stripped of namespace information) so you can refer to specific elements as $request.elementName.childElement (without having to include the namespace). Please note that the ${esc.dollar}request object is the root element, so you do not need to include the name of the root element).
+    <h4>System properties: ${esc.dollar}system</h4>
+    <p>System properties are made available in the context as ${esc.dollar}system. You can access a system property as ${esc.dollar}system.propertyName or ${esc.dollar}system["propertyName"]. The current System properties are: <br/><span style="font-size:85%">$system</span>.</p>
+    <h4>Custom properties: ${esc.dollar}custom</h4>
+    <p>A properties file may be specified at startup by including the following on command-line parameter: -Drest-mocker.properties=propertiesFilename (by default the properties file is rest-mocker.properties in the working directory) - these properties are made available in the context as ${esc.dollar}custom. You can access a custom property as ${esc.dollar}custom.propertyName or ${esc.dollar}custom["propertyName"]. The current Custom properties are: <br/><span style="font-size:85%">$custom</span>.</p>
 
 </body>
 </html>

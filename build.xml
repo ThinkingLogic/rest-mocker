@@ -36,6 +36,9 @@
 	<target name="resolve-dependencies" depends="init-ivy,check-ivy-uptodate" unless="ivy.uptodate">
    		<ivy:retrieve pattern="${web.lib.dir}/[artifact].[ext]" sync="true" conf="web"/>
    		<ivy:retrieve pattern="${build.lib.dir}/[artifact].[ext]" sync="true" conf="lib"/>
+		<echo level="info" message="********************************************************************************************************************************************************************************************"/>
+		<echo level="info" message="About to download Jetty version ${jetty.version}. If this download fails, visit http://download.eclipse.org/jetty/ and update jetty.version in build.properties with the latest stable build"/>
+		<echo level="info" message="********************************************************************************************************************************************************************************************"/>
    		<ivy:retrieve pattern="${jetty.download.dir}/[artifact].[ext]" sync="true" conf="jetty"/>
 		<unzip src="${jetty.zip}" dest="${tools.dir}"/>
 		<move todir="${jetty.dir}/"><fileset dir="${tools.dir}/${jetty.filename}"/></move>
@@ -71,7 +74,9 @@
 		<setproxy proxyhost="${proxy.host}" proxyport="${proxy.port}" proxyuser="${proxy.user}" proxypassword="${proxy.password}"/>
 	</target>
 	<target name="describe-proxy-properties" unless="proxy.host">
+		<echo level="info" message="*****************************************************************************************************************************************"/>
 		<echo level="info" message="To configure a proxy for web access, set the following properties in local.properties: proxy.host, proxy.port, proxy.user, proxy.password"/>
+		<echo level="info" message="*****************************************************************************************************************************************"/>
 	</target>
 
 	<!-- download Ivy from web site, unless the jar file is already present  -->
